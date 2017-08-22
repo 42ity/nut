@@ -5,7 +5,7 @@
  *  Copyright (C)
  *   2002-2010  Arnaud Quette <arnaud.quette@free.fr>
  *   2002-2006	Dmitry Frolov <frolov@riss-telecom.ru>
-  *  			J.W. Hoogervorst <jeroen@hoogervorst.net>
+ *  			J.W. Hoogervorst <jeroen@hoogervorst.net>
  *  			Niels Baggesen <niels@baggesen.net>
  *
  *  Sponsored by MGE UPS SYSTEMS <http://opensource.mgeups.com/>
@@ -48,6 +48,46 @@
 
 #ifndef SNMP_UPS_H
 #define SNMP_UPS_H
+
+/* Note: the snmp-ups.c code is built with legacy OR DMF mapping tables,
+ * and the build recipes explicitly disable DMF for one binary and enable
+ * it for another.
+ */
+#ifndef WITH_DMFMIB
+#define WITH_DMFMIB 0
+#endif
+
+#ifdef WANT_DMF_FUNCTIONS
+# ifndef WITH_DMF_FUNCTIONS
+#  define WITH_DMF_FUNCTIONS WANT_DMF_FUNCTIONS
+# endif
+#endif
+
+#if (!WITH_DMFMIB)
+# ifdef WITH_DMF_LUA
+#  undef WITH_DMF_LUA
+# endif
+# define WITH_DMF_LUA 0
+# ifdef WITH_DMF_FUNCTIONS
+#  undef WITH_DMF_FUNCTIONS
+# endif
+# define WITH_DMF_FUNCTIONS 0
+#endif
+
+#if WITH_DMF_LUA
+# ifndef WITH_DMF_FUNCTIONS
+#  define WITH_DMF_FUNCTIONS 1
+# endif
+# if ! WITH_DMF_FUNCTIONS
+#  error "Explicitly not WITH_DMF_FUNCTIONS, but WITH_DMF_LUA - fatal conflict"
+# endif
+#endif
+
+#if WITH_DMF_LUA
+# include <lua.h>
+# include <lauxlib.h>
+# include <lualib.h>
+#endif
 
 /* FIXME: still needed?
  * workaround for buggy Net-SNMP config */
@@ -126,6 +166,13 @@ typedef struct {
 	unsigned long flags;		/* my flags */
 	info_lkp_t   *oid2info;		/* lookup table between OID and NUT values */
 	int          *setvar;		/* variable to set for SU_FLAG_SETINT */
+#if WITH_DMF_FUNCTIONS
+	char *function_language;
+	char *function_code;
+# if WITH_DMF_LUA
+	lua_State *luaContext;
+# endif
+#endif
 } snmp_info_t;
 
 #define SU_FLAG_OK			(1 << 0)	/* show element to upsd - internal to snmp driver */
@@ -140,6 +187,10 @@ typedef struct {
 #define SU_FLAG_SETINT		(1 << 6)	/* save value */
 #define SU_OUTLET			(1 << 7)	/* outlet template definition */
 #define SU_CMD_OFFSET		(1 << 8)	/* Add +1 to the OID index */
+
+#if WITH_DMF_FUNCTIONS
+#define SU_FLAG_FUNCTION	(1 << 9)	/* TODO Pending to check if this flag have any incompatibility*/
+#endif
 /* Notes on outlet templates usage:
  * - outlet.count MUST exist and MUST be declared before any outlet template
  * Otherwise, the driver will try to determine it by itself...
@@ -204,6 +255,9 @@ typedef struct {
 #define SU_VAR_PRIVPASSWD	"privPassword"
 #define SU_VAR_AUTHPROT		"authProtocol"
 #define SU_VAR_PRIVPROT		"privProtocol"
+/* DMF-SNMP related parameters */
+#define SU_VAR_DMFFILE		"dmffile"
+#define SU_VAR_DMFDIR		"dmfdir"
 
 #define SU_INFOSIZE		128
 #define SU_BUFSIZE		32
@@ -280,7 +334,6 @@ extern struct snmp_session g_snmp_sess, *g_snmp_sess_p;
 extern const char *OID_pwr_status;
 extern int g_pwr_battery;
 extern int pollfreq; /* polling frequency */
-extern int input_phases, output_phases, bypass_phases;
 
 /* Common daisychain structure and functions */
 
