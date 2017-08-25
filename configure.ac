@@ -2103,7 +2103,7 @@ AC_OUTPUT([
  scripts/HP-UX/postinstall
  scripts/python/Makefile
  scripts/systemd/Makefile
- scripts/systemd/nut-driver.service
+ scripts/systemd/nut-driver@.service
  scripts/systemd/nut-monitor.service
  scripts/systemd/nut-server.service
  scripts/systemd/nutshutdown
