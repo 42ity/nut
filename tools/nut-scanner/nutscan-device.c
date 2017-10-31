@@ -21,10 +21,15 @@
     \author Frederic Bohe <fredericbohe@eaton.com>
 */
 
+#include "common.h"
 #include "nutscan-device.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
+#ifdef HAVE_PTHREAD
+#include <semaphore.h>
+#endif
 
 const char * nutscan_device_type_strings[TYPE_END - 1] = {
 	"USB",
@@ -35,6 +40,16 @@ const char * nutscan_device_type_strings[TYPE_END - 1] = {
 	"Avahi",
 	"serial",
 	};
+
+#ifdef HAVE_PTHREAD
+/* FIXME: A more suitable implementation would be to have a generic nutscan.c
+ * file, but this would just contain the semaphore and its function! */
+sem_t semaphore;
+
+sem_t * nutscan_semaphore() {
+    return &semaphore;
+}
+#endif
 
 nutscan_device_t * nutscan_new_device()
 {
