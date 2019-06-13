@@ -53,7 +53,19 @@ upsdrv_info_t upsdrv_info = {
 	{ NULL }
 };
 
-char *mb_read_value(int register_nb, int size, )
+/* Modbus Read Input Registers */
+static int mb_read_value(modbus_t * ctx, int addr, int nb, uint16_t * dest)
+{
+	int r;
+	r = modbus_read_input_registers(ctx, addr, nb, dest);
+	if (r == -1) {
+		upslogx(LOG_ERR, "%s: modbus_read_input_registers(addr:%d, count:%d): %s (%s)", __func__, addr, nb, modbus_strerror(errno), device_path);
+		//errcount++;
+	}
+	return r;
+}
+
+char *mb_read_mfr()
 {
 	uint16_t tab_reg[64];
 	int ret;
@@ -87,9 +99,84 @@ void upsdrv_initinfo(void)
 {
 	upsdebugx(2, "upsdrv_initinfo");
 
+	uint16_t tab_reg[64];
+
+/* AQU:
+lire:
+
+	dstate_setinfo("device.mfr", ...);
+	dstate_setinfo("device.model", ...);
+	dstate_setinfo("device.serial", ...);
+	+ battery.type
+*/
+	// FIXME: test return value
+	char mfr[128];
+	int ret;
+	ret = mb_read_value(ctx, 1536, 8, tab_reg);
+
+	for (int i = 0; i < ret; i++) {
+		if (tab_reg[i] != 0) {
+			mfr[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
+			mfr[(i * 2) + 1] = MODBUS_GET_LOW_BYTE(tab_reg[i]);
+		}
+	}
+	upsdebugx(1, "MFR: %s", mfr);
+	dstate_setinfo ("device.mfr", mfr);
+
+	char model[128];
+	
+	ret = mb_read_value(ctx, 1544, 8, tab_reg);
+
+	for (int i = 0; i < ret; i++) {
+		if (tab_reg[i] != 0) {
+			model[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
+			model[(i * 2) + 1] = MODBUS_GET_LOW_BYTE(tab_reg[i]);
+		}
+	}
+	upsdebugx(1, "Model: %s", model);
+	dstate_setinfo ("device.model", model);
+
+	char serial[128];
+	ret = mb_read_value(ctx, 1552, 8, tab_reg);
+
+	for (int i = 0; i < ret; i++) {
+		if (tab_reg[i] != 0) {
+			serial[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
+			serial[(i * 2) + 1] = MODBUS_GET_LOW_BYTE(tab_reg[i]);
+		}
+	}
+	upsdebugx(1, "Serial: %s", serial);
+	dstate_setinfo ("device.serial", serial);
+//1569	4	2	Float (CDAB)	Battery module Nominal Voltage	Nominal voltage of Battery module	V	TRUE	24.000000	battery.voltage.nominal
+	ret = mb_read_value(ctx, 1569, 2, tab_reg);
+	float real = modbus_get_float_badc(tab_reg);
+	upsdebugx(1, "batteryVoltageNominal : %f",real);
+	dstate_setinfo("battery.voltage.nominal","%f",real); 
+	
+//1571	4	2	Float (CDAB)	Battery module Nominal Charge Capacity	Nominal charge capacity of Battery module	Ah/Wh	TRUE	9.000000	
+// Pas de nom générique	nut
+	ret = mb_read_value(ctx, 1571, 2, tab_reg);
+	real = modbus_get_float_badc(tab_reg);
+	upsdebugx(1, "battery Nominal Charge Capacity : %f",real);
+	dstate_setinfo("batteryNominalChargeCapacity","%f",real);
+
+/* Fixme: for later
+	char batteryType[128];
+	ret = mb_read_value(ctx, 1560, 8, tab_reg);
+
+	for (int i = 0; i < ret; i++) {
+		if (tab_reg[i] != 0) {
+			batteryType[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
+			batteryType[(i * 2) + 1] = MODBUS_GET_LOW_BYTE(tab_reg[i]);
+		}
+	}
+	upsdebugx(1, "batteryType: %s", batteryType);
+	dstate_setinfo ("battery.type", batteryType);
+ */
+	dstate_dataok();
 	/* try to detect the device here - call fatal_with_errno(EXIT_FAILURE, ) if it fails */
 
-	mb_read_mfr();
+	//mb_read_mfr();
 
 	/* 1/ Open the NUT Modbus definition file and load the data
 	 * 2/ Iterate through these data and call dstate_setinfo */
@@ -102,12 +189,134 @@ void upsdrv_initinfo(void)
 	/* upsh.instcmd = instcmd; */
 	/* upsh.setvar = setvar; */
 }
+// Function that convert Decimal to binary 
+ 
+char *decimal_to_binary(int n)
+{
+   int c, d, count;
+   char *pointer;
+   
+   count = 0;
+   pointer = (char*)malloc(32+1);
+   
+   if (pointer == NULL)
+      exit(EXIT_FAILURE);
+     
+   for (c = 31 ; c >= 0 ; c--)
+   {
+      d = n >> c;
+     
+      if (d & 1)
+         *(pointer+count) = 1 + '0';
+      else
+         *(pointer+count) = 0 + '0';
+     
+      count++;
+   }
+   *(pointer+count) = '\0';
+   
+   return  pointer;
+}
 
 void upsdrv_updateinfo(void)
 {
-	upsdebugx(2, "upsdrv_updateinfo");
+	uint16_t tab_reg[64];
+	int ret;
 
-	mb_read_mfr();
+//	int outputCurrent;
+	ret=mb_read_value(ctx, 265, 1, tab_reg);
+	upsdebugx(1, "outputCurrent %i",(int) (tab_reg[0]));
+	dstate_setinfo("output.current", "%i", (int) (tab_reg[0]));
+	
+//	int outputVoltage;
+	ret=mb_read_value(ctx, 292, 1, tab_reg);
+	upsdebugx(1, "outputVoltage %i", (int) (tab_reg[0]));
+	dstate_setinfo("output.voltage", "%i", (int) (tab_reg[0]));
+
+//	int outputRealPower;
+	ret=mb_read_value(ctx,304, 1, tab_reg);
+	upsdebugx(1, "outputRealPower %i", tab_reg[0]);
+	dstate_setinfo("output.realpower", "%i", (int) (tab_reg[0]));
+
+//	int outputPower;
+	ret=mb_read_value(ctx,307,1,tab_reg);
+	upsdebugx(1,"outputPower : %i",tab_reg[0]);
+	dstate_setinfo("output.power","%i",(int) (tab_reg[0]));
+
+//	int inputVoltage;
+	ret=mb_read_value(ctx,336, 1, tab_reg);
+	upsdebugx(1, "inputVoltage : %i", tab_reg[0]);
+	dstate_setinfo("input.voltage", "%i", (int) (tab_reg[0]));
+
+//1575	4	2	Float (CDAB)	Battery module Voltage	Voltage of Battery module	V	TRUE	27.600000	battery.voltage
+	ret=mb_read_value(ctx,1575, 2, tab_reg);
+	float real = modbus_get_float_badc(tab_reg);
+	upsdebugx(1, "batteryVoltage : %f",real);
+	dstate_setinfo("battery.voltage","%f",real); 	
+
+//1589	4	2	INT32 (CDAB) 	Battery module Remaining Charge Capacity	Remaining charge capacity of Battery module	%	TRUE	100	battery.charge
+	ret=mb_read_value(ctx,1589,2,tab_reg);
+	uint16_t AB = tab_reg[0];
+	tab_reg[0] = tab_reg[1];
+	tab_reg[1]=AB;	
+	uint32_t tab_conv=MODBUS_GET_INT32_FROM_INT16(tab_reg, 0);
+	upsdebugx(1,"batteryCharge : %i", tab_conv);
+	dstate_setinfo("battery.charge","%i",tab_conv);
+
+//1592	4	2	INT32 (CDAB) 	Battery module Remaining Time	Remaining Time of Battery module	s	TRUE	11520	battery.runtime
+	ret=mb_read_value(ctx,1592,2,tab_reg);
+	AB = tab_reg[0];
+	tab_reg[0] = tab_reg[1];
+	tab_reg[1]=AB;	
+	tab_conv=MODBUS_GET_INT32_FROM_INT16(tab_reg, 0);
+	upsdebugx(1,"batteryRuntime : %i", tab_conv);
+	dstate_setinfo("battery.runtime","%i",tab_conv);
+
+
+//262	2	1	Int16	Current phase 1 main 2	Bypass input phase 1 current	A	TRUE	0	
+// Pas de nom générique	nut
+	ret=mb_read_value(ctx,262,1,tab_reg);
+	upsdebugx(1,"Current phase 1 main 2 : %i",tab_reg[0]);
+	dstate_setinfo("currentPhase1Main2","%i",(int) (tab_reg[0]));
+
+//286	2	1	Int16	Voltage phase 1 main 2	Bypass input phase 1 voltage	V	TRUE	240	
+// Pas de nom générique	nut	
+	ret=mb_read_value(ctx,286,1,tab_reg);
+	upsdebugx(1,"Voltage Phase 1 main 2 : %i",tab_reg[0]);
+	dstate_setinfo("voltagePhase1Main2","%i",(int) (tab_reg[0]));
+
+//1573	2	1	Uint16	Battery module Capacity Unit	Capacity unit of Battery module	0	TRUE	0	
+// Pas de nom générique	nut	
+	ret=mb_read_value(ctx,1573,1,tab_reg);
+	upsdebugx(1,"Battery module Capacity Unit : %i",tab_reg[0]);
+	dstate_setinfo("batteryModuleCapacityUnit","%i",(int) (tab_reg[0])); 
+
+	dstate_dataok();
+
+/* AQU: a faire:
+lecture des mesures */
+/*uint16_t outputCurrent;
+
+mb_read_value(ctx, 265, 1, tab_reg);
+outputCurrent=tab_reg[0]
+upsdebugx(1, "outputCurrent %i", outputCurrent);
+	dstate_setinfo ("output.current", outputCurrent);*/
+
+
+/*	output.*
+	battery.*
+	input.*
+
+ ex:
+	mb_read_value(ctx, 265, 1, tab_reg);
+	dstate_setinfo("output.current", "%d", (int) (tab_reg[0]);
+
++ dstate_dataok();
+*/
+
+//	mb_read_mfr();
+//	dstate_setinfo ("device.model", "Bapt'man");
+//	dstate_dataok();
 
 	/* int flags; */
 	/* char temp[256]; */
@@ -243,19 +452,23 @@ void upsdrv_initups(void)
 			upsdebugx(2, "upsdrv_initups: successfully connected to TCP (network) device");
 	}
 
-	modbus_set_response_timeout(ctx, 2, 0);
+	modbus_set_slave(ctx, 1);
 
-	uint32_t old_response_to_sec;
-	uint32_t old_response_to_usec;
-	modbus_get_response_timeout(ctx, &old_response_to_sec, &old_response_to_usec);
-	upsdebugx(2, "response timeout: %i / %i", old_response_to_sec, old_response_to_usec);
+// AQU: a gicler
+
+//	modbus_set_response_timeout(ctx, 2, 0);
+
+//	uint32_t old_response_to_sec;
+//	uint32_t old_response_to_usec;
+//	modbus_get_response_timeout(ctx, &old_response_to_sec, &old_response_to_usec);
+//	upsdebugx(2, "response timeout: %i / %i", old_response_to_sec, old_response_to_usec);
 	modbus_set_debug(ctx, TRUE);
 	modbus_set_error_recovery(ctx,
 							  MODBUS_ERROR_RECOVERY_LINK |
 							  MODBUS_ERROR_RECOVERY_PROTOCOL);
 
-	modbus_set_slave(ctx, 1);
-	mb_read_mfr();
+
+//	mb_read_mfr();
 
 	/* don't try to detect the device here */
 }
