@@ -53,48 +53,44 @@ upsdrv_info_t upsdrv_info = {
 	{ NULL }
 };
 
-/* Modbus Read Input Registers */
+/* Modbus Read Registers */
 static int mb_read_value(modbus_t * ctx, int addr, int nb, uint16_t * dest)
 {
 	int r;
-	r = modbus_read_input_registers(ctx, addr, nb, dest);
+	r = modbus_read_registers(ctx, addr, nb, dest);
 	if (r == -1) {
-		upslogx(LOG_ERR, "%s: modbus_read_input_registers(addr:%d, count:%d): %s (%s)", __func__, addr, nb, modbus_strerror(errno), device_path);
+		upslogx(LOG_ERR, "%s: modbus_read_registers(addr:%d, count:%d): %s (%s)", __func__, addr, nb, modbus_strerror(errno), device_path);
 		//errcount++;
 	}
 	return r;
 }
 
-char *mb_read_mfr()
+/*char *mb_read_device_type()
 {
 	uint16_t tab_reg[64];
 	int ret;
-	char mfr[128];
+	char device_type[128];
 
-	upsdebugx(2, "mb_read_mfr");
+	upsdebugx(2, "mb_read_device_type");
 
-	memset (mfr, 0, 128);
+	memset (device_type, 0, 128);
 
 	//int modbus_read_registers(modbus_t *ctx, int addr, int nb, uint16_t *dest);
 	//ret = modbus_read_registers(ctx, 0x600, 8, tab_reg);
 	//int modbus_read_input_registers(modbus_t *ctx, int addr, int nb, uint16_t *dest);
-	ret = modbus_read_registers(ctx, 1536, 8, tab_reg);
+	ret = modbus_read_registers(ctx, 4099, 1, tab_reg);
 	if (ret == -1)
-		upsdebugx(1, "Error reading register 1536: %s", modbus_strerror(errno));
+		upsdebugx(1, "Error reading register 4099: %s", modbus_strerror(errno));
 	else {
-		upsdebugx(1, "Read register 1536 successfully");
-
-		for (int i = 0; i < ret; i++) {
-			if (tab_reg[i] != 0) {
-				mfr[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
-				mfr[(i * 2) + 1] = MODBUS_GET_LOW_BYTE(tab_reg[i]);
-			}
-		}
-		upsdebugx(1, "MFR: %s", mfr);
-		dstate_setinfo ("device.mfr", mfr);
+		upsdebugx(1, "Read register 4099 successfully");
+		upsdebugx(1, "device_type: %s", tab_reg);
+		dstate_setinfo ("device.type","%s", (int) tab_reg); 
+		//dstate_setinfo ("device.type","power-meter"); 
 	}
+	
 	return NULL;
-}
+}*/
+
 void upsdrv_initinfo(void)
 {
 	upsdebugx(2, "upsdrv_initinfo");
@@ -110,35 +106,22 @@ lire:
 	+ battery.type
 */
 	// FIXME: test return value
-	char mfr[128];
+
 	int ret;
-	ret = mb_read_value(ctx, 1536, 8, tab_reg);
 
-	for (int i = 0; i < ret; i++) {
-		if (tab_reg[i] != 0) {
-			mfr[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
-			mfr[(i * 2) + 1] = MODBUS_GET_LOW_BYTE(tab_reg[i]);
-		}
-	}
-	upsdebugx(1, "MFR: %s", mfr);
-	dstate_setinfo ("device.mfr", mfr);
+//Device type
+	ret = modbus_read_registers(ctx, 4099, 1, tab_reg);
+	upsdebugx(1, "device.type: %i",tab_reg[0]);
+	dstate_setinfo ("device.type","%i",(int) (tab_reg[0]));
 
-	char model[128];
-	
-	ret = mb_read_value(ctx, 1544, 8, tab_reg);
+//Firmware version
+	ret = mb_read_value(ctx, 4100, 1, tab_reg);	
+	upsdebugx(1, "firm_vers: %i",tab_reg[0]);
+	dstate_setinfo ("ups.firmware","%i",(int) (tab_reg[0]));
 
-	for (int i = 0; i < ret; i++) {
-		if (tab_reg[i] != 0) {
-			model[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
-			model[(i * 2) + 1] = MODBUS_GET_LOW_BYTE(tab_reg[i]);
-		}
-	}
-	upsdebugx(1, "Model: %s", model);
-	dstate_setinfo ("device.model", model);
-
+//PID (Product identification)
 	char serial[128];
-	ret = mb_read_value(ctx, 1552, 8, tab_reg);
-
+	ret = mb_read_value(ctx, 4104, 8, tab_reg);
 	for (int i = 0; i < ret; i++) {
 		if (tab_reg[i] != 0) {
 			serial[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
@@ -147,32 +130,52 @@ lire:
 	}
 	upsdebugx(1, "Serial: %s", serial);
 	dstate_setinfo ("device.serial", serial);
-//1569	4	2	Float (CDAB)	Battery module Nominal Voltage	Nominal voltage of Battery module	V	TRUE	24.000000	battery.voltage.nominal
-	ret = mb_read_value(ctx, 1569, 2, tab_reg);
-	float real = modbus_get_float_badc(tab_reg);
-	upsdebugx(1, "batteryVoltageNominal : %f",real);
-	dstate_setinfo("battery.voltage.nominal","%f",real); 
+
+//Protocol 
+	ret=mb_read_value(ctx,4111,1,tab_reg);
+	upsdebugx(1,"Protocol_type : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_protocolType","%i",(int) (tab_reg[0]));
 	
-//1571	4	2	Float (CDAB)	Battery module Nominal Charge Capacity	Nominal charge capacity of Battery module	Ah/Wh	TRUE	9.000000	
-// Pas de nom générique	nut
-	ret = mb_read_value(ctx, 1571, 2, tab_reg);
-	real = modbus_get_float_badc(tab_reg);
-	upsdebugx(1, "battery Nominal Charge Capacity : %f",real);
-	dstate_setinfo("batteryNominalChargeCapacity","%f",real);
+//Baudrate 1200,2400,4800,9600,19200 ou 38400 
+	ret=mb_read_value(ctx,4112,1,tab_reg);
+	upsdebugx(1,"Speed : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_Speed","%i",(int) (tab_reg[0]));
 
-/* Fixme: for later
-	char batteryType[128];
-	ret = mb_read_value(ctx, 1560, 8, tab_reg);
-
-	for (int i = 0; i < ret; i++) {
-		if (tab_reg[i] != 0) {
-			batteryType[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
-			batteryType[(i * 2) + 1] = MODBUS_GET_LOW_BYTE(tab_reg[i]);
+//Parity
+	char parity[5];
+	ret=mb_read_value(ctx,4113,1,tab_reg);
+	if (tab_reg[0]==0)
+		strcpy(parity , "none");
+	else {if (tab_reg[0]==1)
+		strcpy(parity , "even"); 
+		else {strcpy(parity , "odd");
+			}
 		}
-	}
-	upsdebugx(1, "batteryType: %s", batteryType);
-	dstate_setinfo ("battery.type", batteryType);
- */
+	
+	upsdebugx(1,"Parity : %s",parity);
+	dstate_setinfo("Unmapped_Parity","%s",parity);
+// Stop bits
+	ret=mb_read_value(ctx,4114,1,tab_reg);
+	upsdebugx(1,"Stop_bits : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_Stop_bits","%i",(int) (tab_reg[0]));
+
+//Modbus address, Slave ID
+	ret=mb_read_value(ctx,4115,1,tab_reg);
+	upsdebugx(1,"Modbus address : %i",tab_reg[0]);
+	dstate_setinfo("ups.productid","%i",(int) (tab_reg[0]));
+//Reset interface command
+	ret=mb_read_value(ctx,4116,1,tab_reg);
+	upsdebugx(1,"Reset interface command : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_ResetInterfaceCommand","%i",(int) (tab_reg[0]));
+//Value format
+	ret=mb_read_value(ctx,4117,1,tab_reg);
+	upsdebugx(1,"Value format : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_Value_format","%i",(int) (tab_reg[0]));
+//Reset energy command
+	ret=mb_read_value(ctx,4118,1,tab_reg);
+	upsdebugx(1,"Reset energy counters command : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_Reset_energy_counters_command","%i",(int) (tab_reg[0]));
+
 	dstate_dataok();
 	/* try to detect the device here - call fatal_with_errno(EXIT_FAILURE, ) if it fails */
 
@@ -189,109 +192,312 @@ lire:
 	/* upsh.instcmd = instcmd; */
 	/* upsh.setvar = setvar; */
 }
-// Function that convert Decimal to binary 
- 
-char *decimal_to_binary(int n)
-{
-   int c, d, count;
-   char *pointer;
-   
-   count = 0;
-   pointer = (char*)malloc(32+1);
-   
-   if (pointer == NULL)
-      exit(EXIT_FAILURE);
-     
-   for (c = 31 ; c >= 0 ; c--)
-   {
-      d = n >> c;
-     
-      if (d & 1)
-         *(pointer+count) = 1 + '0';
-      else
-         *(pointer+count) = 0 + '0';
-     
-      count++;
-   }
-   *(pointer+count) = '\0';
-   
-   return  pointer;
-}
+
+
 
 void upsdrv_updateinfo(void)
 {
 	uint16_t tab_reg[64];
 	int ret;
 
-//	int outputCurrent;
-	ret=mb_read_value(ctx, 265, 1, tab_reg);
-	upsdebugx(1, "outputCurrent %i",(int) (tab_reg[0]));
-	dstate_setinfo("output.current", "%i", (int) (tab_reg[0]));
+// IMP Energy
+	//Active Energy 1st phase T1, imp (Wh);
+	ret=mb_read_value(ctx,4119, 4, tab_reg);
+	float real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L1_T1_output : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L1_T1_output", "%f", real*1000);
+
+//Active Energy 2nd phase T1, imp (Wh);
+	ret=mb_read_value(ctx,4123, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L2_T1_output : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L2_T1_output", "%f", real*1000);
+
+//Active Energy 3rd phase T1, imp (Wh);
+	ret=mb_read_value(ctx,4127, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L3_T1_output : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L3_T1_output", "%f", real*1000);
+
+//Active Energy Σ T1, imp (Wh);
+	ret=mb_read_value(ctx,4131, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_T1_output : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_T1_output", "%f", real*1000);
+
+//Active Energy 1st phase T2, imp (Wh);
+	ret=mb_read_value(ctx,4135, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L1_T2_output : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L1_T2_output", "%f", real*1000);
+
+//Active Energy 2nd phase T2, imp (Wh);
+	ret=mb_read_value(ctx,4139, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L2_T2_output : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L2_T2_output", "%f", real*1000);
+
+//Active Energy 3nd phase T2, imp (Wh);
+	ret=mb_read_value(ctx,4143, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L3_T2_output : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L3_T2_output", "%f", real*1000);
+
+//Active Energy Σ T2, imp (Wh);
+	ret=mb_read_value(ctx,4147, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_T2_output : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_T2_output", "%f", real*1000);
+// end of IMP
+
+
+//	float Active Power 1st phase (W);
+	ret=mb_read_value(ctx, 4151,2, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "input.L1.realpower : %f",real);
+	dstate_setinfo("input.L1.realpower", "%f", real*1000);
 	
-//	int outputVoltage;
-	ret=mb_read_value(ctx, 292, 1, tab_reg);
-	upsdebugx(1, "outputVoltage %i", (int) (tab_reg[0]));
-	dstate_setinfo("output.voltage", "%i", (int) (tab_reg[0]));
+//	float Active Power 2nd phase (W);
+	ret=mb_read_value(ctx, 4153, 2, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "input.L2.realpower : %f",real);
+	dstate_setinfo("input.L2.realpower", "%f", real*1000);
 
-//	int outputRealPower;
-	ret=mb_read_value(ctx,304, 1, tab_reg);
-	upsdebugx(1, "outputRealPower %i", tab_reg[0]);
-	dstate_setinfo("output.realpower", "%i", (int) (tab_reg[0]));
+//	float Active Power 3rd phase (W);
+	ret=mb_read_value(ctx,4155, 2, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "input.L3.realpower : %f", real);
+	dstate_setinfo("input.L3.realpower", "%f", real*1000);
 
-//	int outputPower;
-	ret=mb_read_value(ctx,307,1,tab_reg);
-	upsdebugx(1,"outputPower : %i",tab_reg[0]);
-	dstate_setinfo("output.power","%i",(int) (tab_reg[0]));
+//  Active Power Σ (W);
+	ret = mb_read_value(ctx, 4157, 4, tab_reg);
+	float realpower = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "input.realpower : %f", realpower);
+	dstate_setinfo ("input.realpower","%f", realpower*1000);
 
-//	int inputVoltage;
-	ret=mb_read_value(ctx,336, 1, tab_reg);
-	upsdebugx(1, "inputVoltage : %i", tab_reg[0]);
-	dstate_setinfo("input.voltage", "%i", (int) (tab_reg[0]));
+//Active Energy 1st phase T1, exp (Wh);
+	ret=mb_read_value(ctx,4161, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L1_T1 : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L1_T1", "%f", real*1000);
 
-//1575	4	2	Float (CDAB)	Battery module Voltage	Voltage of Battery module	V	TRUE	27.600000	battery.voltage
-	ret=mb_read_value(ctx,1575, 2, tab_reg);
-	float real = modbus_get_float_badc(tab_reg);
-	upsdebugx(1, "batteryVoltage : %f",real);
-	dstate_setinfo("battery.voltage","%f",real); 	
+//Active Energy 2nd phase T1, exp (Wh);
+	ret=mb_read_value(ctx,4165, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L2_T1 : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L2_T1", "%f", real*1000);
 
-//1589	4	2	INT32 (CDAB) 	Battery module Remaining Charge Capacity	Remaining charge capacity of Battery module	%	TRUE	100	battery.charge
-	ret=mb_read_value(ctx,1589,2,tab_reg);
-	uint16_t AB = tab_reg[0];
-	tab_reg[0] = tab_reg[1];
-	tab_reg[1]=AB;	
-	uint32_t tab_conv=MODBUS_GET_INT32_FROM_INT16(tab_reg, 0);
-	upsdebugx(1,"batteryCharge : %i", tab_conv);
-	dstate_setinfo("battery.charge","%i",tab_conv);
+//Active Energy 3rd phase T1, exp (Wh);
+	ret=mb_read_value(ctx,4169, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L3_T1 : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L3_T1", "%f", real*1000);
 
-//1592	4	2	INT32 (CDAB) 	Battery module Remaining Time	Remaining Time of Battery module	s	TRUE	11520	battery.runtime
-	ret=mb_read_value(ctx,1592,2,tab_reg);
-	AB = tab_reg[0];
-	tab_reg[0] = tab_reg[1];
-	tab_reg[1]=AB;	
-	tab_conv=MODBUS_GET_INT32_FROM_INT16(tab_reg, 0);
-	upsdebugx(1,"batteryRuntime : %i", tab_conv);
-	dstate_setinfo("battery.runtime","%i",tab_conv);
+//Active Energy Σ T1, exp (Wh);
+	ret=mb_read_value(ctx,4173, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_T1 : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_T1", "%f", real*1000);
+
+//Active Energy 1st phase T2, exp (Wh);
+	ret=mb_read_value(ctx,4177, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L1_T2 : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L1_T2", "%f", real*1000);
+
+//Active Energy 2nd phase T2, exp (Wh);
+	ret=mb_read_value(ctx,4181, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L2_T2 : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L2_T2", "%f", real*1000);
+
+//Active Energy 3nd phase T2, exp (Wh);
+	ret=mb_read_value(ctx,4185, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_L3_T2 : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_L3_T2", "%f", real*1000);
+
+//Active Energy Σ T2, exp (Wh);
+	ret=mb_read_value(ctx,4189, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "RealEnergy_T2 : %f", real);
+	dstate_setinfo("Unmapped_RealEnergy_T2", "%f", real*1000);
+
+//Reactive Energy 1st phase T1, exp (varh);
+	ret=mb_read_value(ctx,4225, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactiveEnergy_L1_T1 : %f", real);
+	dstate_setinfo("Unmapped_ReactiveEnergy_L1_T1", "%f", real*1000);
+
+//Reactive Energy 2nd phase T1, exp (varh);
+	ret=mb_read_value(ctx,4229, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactiveEnergy_L2_T1 : %f", real);
+	dstate_setinfo("Unmapped_ReactiveEnergy_L2_T1", "%f", real*1000);
+
+//Reactive Energy 3rd phase T1, exp (varh);
+	ret=mb_read_value(ctx,4233, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactiveEnergy_L3_T1 : %f", real);
+	dstate_setinfo("Unmapped_ReactiveEnergy_L3_T1", "%f", real*1000);
+
+//Reactive Energy Σ T1, exp (varh);
+	ret=mb_read_value(ctx,4237, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactiveEnergy_T1 : %f", real);
+	dstate_setinfo("Unmapped_ReactiveEnergy_T1", "%f", real*1000);
+
+//Reactive Energy 1st phase T2, exp (varh);
+	ret=mb_read_value(ctx,4241, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactiveEnergy_L1_T2 : %f", real);
+	dstate_setinfo("Unmapped_ReactiveEnergy_L1_T2 ", "%f", real*1000);
+
+//Reactive Energy 2nd phase T2, exp (varh);
+	ret=mb_read_value(ctx,4245, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactiveEnergy_L2_T2 : %f", real);
+	dstate_setinfo("Unmapped_ReactiveEnergy_L2_T2 ", "%f", real*1000);
+
+//Reactive Energy 3rd phase T2, exp (varh);
+	ret=mb_read_value(ctx,4249, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactiveEnergy_L3_T2 : %f", real);
+	dstate_setinfo("Unmapped_ReactiveEnergy_L3_T2 ", "%f", real*1000);
+
+//Reactive Energy Σ T2, exp (varh);
+	ret=mb_read_value(ctx,4253, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactiveEnergy_T2 : %f", real);
+	dstate_setinfo("ReactiveEnergy_T2", "%f", real*1000);
 
 
-//262	2	1	Int16	Current phase 1 main 2	Bypass input phase 1 current	A	TRUE	0	
-// Pas de nom générique	nut
-	ret=mb_read_value(ctx,262,1,tab_reg);
-	upsdebugx(1,"Current phase 1 main 2 : %i",tab_reg[0]);
-	dstate_setinfo("currentPhase1Main2","%i",(int) (tab_reg[0]));
+//Reactive Power 1st phase (var);
+	ret=mb_read_value(ctx,4257, 2, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactivePower_L1 : %f", real);	
+	dstate_setinfo("Unmapped_ReactivePower_L1", "%f", real*1000);
 
-//286	2	1	Int16	Voltage phase 1 main 2	Bypass input phase 1 voltage	V	TRUE	240	
-// Pas de nom générique	nut	
-	ret=mb_read_value(ctx,286,1,tab_reg);
-	upsdebugx(1,"Voltage Phase 1 main 2 : %i",tab_reg[0]);
-	dstate_setinfo("voltagePhase1Main2","%i",(int) (tab_reg[0]));
+//Reactive Power 2nd phase (var);
+	ret=mb_read_value(ctx,4259, 2, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactivePower_L2 : %f", real);
+	dstate_setinfo("Unmapped_ReactivePower_L2", "%f", real*1000);
 
-//1573	2	1	Uint16	Battery module Capacity Unit	Capacity unit of Battery module	0	TRUE	0	
-// Pas de nom générique	nut	
-	ret=mb_read_value(ctx,1573,1,tab_reg);
-	upsdebugx(1,"Battery module Capacity Unit : %i",tab_reg[0]);
-	dstate_setinfo("batteryModuleCapacityUnit","%i",(int) (tab_reg[0])); 
+//Reactive Power 3nd phase (var);
+	ret=mb_read_value(ctx,4261, 2, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactivePower_L3 : %f", real);
+	dstate_setinfo("Unmapped_ReactivePower_L3", "%f", real*1000);
 
-	dstate_dataok();
+//Reactive Power Σ (var);
+	ret=mb_read_value(ctx,4263, 4, tab_reg);
+	real = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "ReactivePower : %f", real);
+	dstate_setinfo("Unmapped_ReactivePower", "%f", real*1000);
+
+
+
+//L1-N voltage (V)
+ret = mb_read_value(ctx, 4267, 2, tab_reg);
+	float voltage = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Voltage_L1_N : %f", voltage);
+	dstate_setinfo ("input.L1-N.voltage","%f", voltage);
+
+//L2-N voltage (V)
+ret = mb_read_value(ctx, 4269, 2, tab_reg);
+	voltage = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Voltage_L2_N : %f", voltage);
+	dstate_setinfo ("input.L2-N.voltage","%f", voltage);
+//L3-N voltage (V)
+ret = mb_read_value(ctx, 4271, 2, tab_reg);
+	voltage = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Voltage_L3_N : %f", voltage);
+	dstate_setinfo ("input.L3-N.voltage","%f", voltage);
+//L1-L2 voltage (V)
+ret = mb_read_value(ctx, 4273, 2, tab_reg);
+	voltage = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Voltage_L1_L2 : %f", voltage);
+	dstate_setinfo ("input.L1-L2.voltage","%f", voltage);
+//L2-L3 voltage (V)
+ret = mb_read_value(ctx, 4275, 2, tab_reg);
+	voltage = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Voltage_L2_L3 : %f", voltage);
+	dstate_setinfo ("input.L2-L3.voltage","%f", voltage);
+//L3-L1 voltage (V)
+ret = mb_read_value(ctx, 4277, 2, tab_reg);
+	voltage = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Voltage_L3_L1 : %f", voltage);
+	dstate_setinfo ("input.L3-L1.voltage","%f", voltage);
+
+//phase1 current (A)
+ret = mb_read_value(ctx, 4279, 2, tab_reg);
+	float current = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Current.L1 : %f", current);
+	dstate_setinfo ("input.L1.current","%f", current);
+//phase2 current (A)
+ret = mb_read_value(ctx, 4281, 2, tab_reg);
+	current = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Current.L2 : %f", current);
+	dstate_setinfo ("input.L2.current.L2","%f", current);
+//phase3 current (A)
+ret = mb_read_value(ctx, 4283, 2, tab_reg);
+	current = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Current.L3 : %f", current);
+	dstate_setinfo ("input.L3.current","%f", current);
+
+//apparent power phase1 (VA)
+ret = mb_read_value(ctx, 4285, 2, tab_reg);
+	float power = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Power.L1 : %f", power);
+	dstate_setinfo ("input.L1.power","%f", power*1000);
+//apparent power phase2 (VA)
+ret = mb_read_value(ctx, 4287, 2, tab_reg);
+	power = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Power.L2 : %f", power);
+	dstate_setinfo ("input.L2.power.L2","%f", power*1000);
+//apparent power phase3 (VA)
+ret = mb_read_value(ctx, 4289, 2, tab_reg);
+	power = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Power.L3 : %f", power);
+	dstate_setinfo ("input.L3.power","%f", power*1000);
+ 
+//apparent power Σ (VA)
+ret = mb_read_value(ctx, 4291, 4, tab_reg);
+	power = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Power : %f", power);
+	dstate_setinfo ("input.power","%f", power*1000);
+
+//power factor cos ϕ phase1
+ret = mb_read_value(ctx, 4295, 2, tab_reg);
+	float powerFactor_L1 = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Power.Factor.L1 : %f", powerFactor_L1);
+	dstate_setinfo ("input.L1.powerfactor","%f", powerFactor_L1);
+//power factor cos ϕ phase2
+ret = mb_read_value(ctx, 4297, 2, tab_reg);
+	float powerFactor_L2 = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Power.Factor.L2 : %f", powerFactor_L2);
+	dstate_setinfo ("input.L2.powerfactor","%f", powerFactor_L2);
+//power factor cos ϕ phase3
+ret = mb_read_value(ctx, 4299, 2, tab_reg);
+	float powerFactor_L3 = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Power.Factor.L3 : %f", powerFactor_L3);
+	dstate_setinfo ("input.L3.powerfactor","%f", powerFactor_L3);
+//power factor cos ϕ Σ
+ret = mb_read_value(ctx, 4301, 2, tab_reg);
+	float powerFactor = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Power.Factor : %f", powerFactor);
+	dstate_setinfo ("input.powerfactor","%f", powerFactor);
+
+//frequency (Hz)
+ret = mb_read_value(ctx, 4303, 2, tab_reg);
+	float frequency = modbus_get_float_abcd(tab_reg);
+	upsdebugx(1, "Frequency : %f", frequency);
+	dstate_setinfo ("input.frequency","%f", frequency);
+
+dstate_dataok();
+
+
 
 /* AQU: a faire:
 lecture des mesures */
@@ -432,7 +638,7 @@ void upsdrv_initups(void)
 
 		/* FIXME: handle serial comm. params (params in ups.conf
 		 * and/or definition file) */
-		ctx = modbus_new_rtu(device_path, 115200, 'N', 8, 1);
+		ctx = modbus_new_rtu(device_path, 115200, 'N', 8, 2);
 		if (ctx == NULL)
 			fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
 	}
@@ -452,7 +658,7 @@ void upsdrv_initups(void)
 			upsdebugx(2, "upsdrv_initups: successfully connected to TCP (network) device");
 	}
 
-	modbus_set_slave(ctx, 1);
+	modbus_set_slave(ctx, 2);
 
 // AQU: a gicler
 
