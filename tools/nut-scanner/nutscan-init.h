@@ -1,5 +1,7 @@
 /*
- *  Copyright (C) 2011 - EATON
+ *  Copyright (C)
+ * 		2011 - EATON
+ * 		2019 Arnaud Quette <arnaud.quette@free.fr>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,6 +38,7 @@ extern int nutscan_avail_nut;
 extern int nutscan_avail_snmp;
 extern int nutscan_avail_usb;
 extern int nutscan_avail_xml_http;
+extern int nutscan_avail_modbus;
 
 void nutscan_init(void);
 void nutscan_free(void);

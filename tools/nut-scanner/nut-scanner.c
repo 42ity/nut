@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011 - 2012  Arnaud Quette <arnaud.quette@free.fr>
+ *  Copyright (C) 2011 - 2019  Arnaud Quette <arnaud.quette@free.fr>
  *  Copyright (C) 2016 Michal Vyskocil <MichalVyskocil@eaton.com>
  *  Copyright (C) 2016 Jim Klimov <EvgenyKlimov@eaton.com>
  *
@@ -71,7 +71,7 @@
 #define ERR_BAD_OPTION	(-1)
 
 // TODO : #if WITH_DMFMIB for options to set up path(s) to the DMFs to load
-const char optstring[] = "?ht:T:s:e:E:c:l:u:W:X:w:x:p:b:B:d:L:CUSMOAm:NPqIVaDzZ:";
+const char optstring[] = "?ht:T:s:e:E:c:l:u:W:X:w:x:p:b:B:d:L:j:JCUSMOAm:NPqIVaDzZ:";
 
 #ifdef HAVE_GETOPT_LONG
 const struct option longopts[] =
@@ -109,6 +109,8 @@ const struct option longopts[] =
 	{ "nut_debug_level", no_argument, NULL, 'D' },
 	{ "snmp_scan_dmf", no_argument, NULL, 'z' },
 	{ "snmp_scan_dmf_dir", required_argument, NULL, 'Z' },
+	{ "modbus_rtu_scan",required_argument,NULL,'j' },
+	{ "modbus_tcp_scan",no_argument,NULL,'J' },
 	{NULL,0,NULL,0}};
 #else
 #define getopt_long(a,b,c,d,e)	getopt(a,b,c) 
@@ -145,6 +147,19 @@ static void * run_xml(void * arg)
 	nutscan_xml_t * sec = (nutscan_xml_t *)arg;
 
 	dev[TYPE_XML] = nutscan_scan_xml_http_range(start_ip, end_ip, timeout, sec);
+	return NULL;
+}
+
+/* FIXME
+static void * run_modbus_rtu(void * arg)
+{
+	dev[TYPE_MODBUS] = nutscan_scan_modbus_rtu(start_ip, end_ip, timeout, port);
+	return NULL;
+} */
+
+static void * run_modbus_tcp(void * arg)
+{
+	dev[TYPE_MODBUS] = nutscan_scan_modbus_tcp(start_ip, end_ip, timeout, 502 /* FIXME: port */);
 	return NULL;
 }
 
@@ -204,6 +219,11 @@ void show_usage()
 	if( nutscan_avail_xml_http ) {
 		printf("  -M, --xml_scan: Scan XML/HTTP devices.\n");
 	}
+	if( nutscan_avail_modbus ) {
+		printf("  -j  --modbus_rtu_scan <serial ports list>: Scan Modbus RTU devices.\n");
+		printf("  -J  --modbus_tcp_scan: Scan Modbus TCP devices.\n");
+		//FIXME: printf("  -p, --port <port number>: Port number of remote Modbus Master\n");
+	}
 	printf("  -O, --oldnut_scan: Scan NUT devices (old method).\n");
 	if( nutscan_avail_avahi ) {
 		printf("  -A, --avahi_scan: Scan NUT devices (avahi method).\n");
@@ -247,6 +267,12 @@ void show_usage()
 		printf("  -L, --cipher_suite_id <cipher suite id>: Specify the IPMI 2.0 cipher suite ID to use, for authentication, integrity, and confidentiality (default=3)\n");
 	}
 
+	if( nutscan_avail_modbus ) {
+		printf("\nModbus specific options:\n");
+		printf("  -j  --modbus_rtu_scan: Scan Modbus RTU devices.\n");
+		printf("  -J  --modbus_tcp_scan: Scan Modbus TCP devices.\n");
+		//FIXME: printf("  -p, --port <port number>: Port number of remote Modbus Master\n");
+	}
 	printf("\nNUT specific options:\n");
 	printf("  -p, --port <port number>: Port number of remote NUT upsd\n");
 	printf("\ndisplay specific options:\n");
@@ -270,6 +296,8 @@ int main(int argc, char *argv[])
 	int allow_usb = 0;
 	int allow_snmp = 0;
 	int allow_xml = 0;
+	int allow_modbus_rtu = 0;
+	int allow_modbus_tcp = 0;
 	int allow_oldnut = 0;
 	int allow_avahi = 0;
 	int allow_ipmi = 0;
@@ -482,6 +510,19 @@ int main(int argc, char *argv[])
 				}
 				allow_xml = 1;
 				break;
+			case 'j':
+				if(!nutscan_avail_modbus) {
+					goto display_help;
+				}
+				serial_ports = strdup(optarg);
+				allow_modbus_rtu = 1;
+				break;
+			case 'J':
+				if(!nutscan_avail_modbus) {
+					goto display_help;
+				}
+				allow_modbus_tcp = 1;
+				break;
 			case 'O':
 				allow_oldnut = 1;
 				break;
@@ -523,6 +564,13 @@ int main(int argc, char *argv[])
 				if(nutscan_avail_xml_http) {
 					printf("XML\n");
 				}
+				if(nutscan_avail_modbus) {
+					printf("MODBUS RTU\n");
+					printf("MODBUS TCP\n");
+				}
+				if(nutscan_avail_modbus) {
+					printf("MODBUS\n");
+				}
 				if(nutscan_avail_avahi) {
 					printf("AVAHI\n");
 				}
@@ -558,9 +606,10 @@ display_help:
 	if( cidr ) {
 		nutscan_cidr_to_ip(cidr, &start_ip, &end_ip);
 	}
+	upsdebugx(3, "START IP = %s", start_ip);
 
 	if( !allow_usb && !allow_snmp && !allow_xml && !allow_oldnut &&
-		!allow_avahi && !allow_ipmi && !allow_eaton_serial) {
+		!allow_avahi && !allow_ipmi && !allow_eaton_serial && !allow_modbus_tcp ) {
 		allow_all = 1;
 	}
 
@@ -568,10 +617,12 @@ display_help:
 		allow_usb = 1;
 		allow_snmp = 1;
 		allow_xml = 1;
+		allow_modbus_tcp = 1;
 		allow_oldnut = 1;
 		allow_avahi = 1;
 		allow_ipmi = 1;
-		/* BEWARE: allow_all does not include allow_eaton_serial! */
+		/* BEWARE:
+		   allow_all does not include allow_eaton_serial nor allow_modbus_rtu! */
 	}
 
 /* TODO/discuss : Should the #else...#endif code below for lack of pthreads
@@ -637,6 +688,30 @@ display_help:
 #endif /* HAVE_PTHREAD */
 	} else {
 		upsdebugx(1,"XML/HTTP SCAN: not requested, SKIPPED");
+	}
+
+	/* FIXME
+	if( allow_modbus_rtu && nutscan_avail_modbus) { */
+	if( allow_modbus_tcp && nutscan_avail_modbus) {
+		if( start_ip == NULL ) {
+			upsdebugx(quiet,"No start IP, skipping Modbus TCP");
+			nutscan_avail_modbus = 0; // FIXME: only TCP, not RTU
+		}
+		else {
+			upsdebugx(quiet,"Scanning Modbus TCP bus.");
+#ifdef HAVE_PTHREAD
+			upsdebugx(1,"Modbus TCP SCAN: starting pthread_create with run_modbus_tcp...");
+			if(pthread_create(&thread[TYPE_MODBUS],NULL,run_modbus_tcp,NULL)) {
+				upsdebugx(1,"pthread_create returned an error; disabling this scan mode");
+				nutscan_avail_modbus = 0;
+			}
+#else
+			upsdebugx(1,"Modbus TCP SCAN: no pthread support, starting nutscan_scan_modbus_tcp()...");
+			dev[TYPE_MODBUS] = nutscan_scan_modbus_tcp(start_ip, end_ip, timeout, 502);
+#endif /* HAVE_PTHREAD */
+		}
+	} else {
+		upsdebugx(1,"Modbus TCP SCAN: not requested, SKIPPED");
 	}
 
 	if( allow_oldnut && nutscan_avail_nut) {
@@ -723,6 +798,10 @@ display_help:
 		upsdebugx(1,"XML/HTTP SCAN: join back the pthread");
 		pthread_join(thread[TYPE_XML], NULL);
 	}
+	if( (allow_modbus_tcp || allow_modbus_rtu) && nutscan_avail_modbus && thread[TYPE_MODBUS]) {
+		upsdebugx(1,"MODBUS SCAN: join back the pthread");
+		pthread_join(thread[TYPE_MODBUS], NULL);
+	}
 	if( allow_oldnut && nutscan_avail_nut && thread[TYPE_NUT]) {
 		upsdebugx(1,"NUT bus (old) SCAN: join back the pthread");
 		pthread_join(thread[TYPE_NUT], NULL);
@@ -757,6 +836,11 @@ display_help:
 	display_func(dev[TYPE_XML]);
 	upsdebugx(1,"SCANS DONE: free resources: XML/HTTP");
 	nutscan_free_device(dev[TYPE_XML]);
+
+	upsdebugx(1,"SCANS DONE: display results: MODBUS");
+	display_func(dev[TYPE_MODBUS]);
+	upsdebugx(1,"SCANS DONE: free resources: MODBUS");
+	nutscan_free_device(dev[TYPE_MODBUS]);
 
 	upsdebugx(1,"SCANS DONE: display results: NUT bus (old)");
 	display_func(dev[TYPE_NUT]);

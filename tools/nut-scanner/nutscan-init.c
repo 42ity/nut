@@ -1,5 +1,7 @@
 /*
- *  Copyright (C) 2011 - EATON
+ *  Copyright (C)
+ * 		2011 - EATON
+ * 		2019 Arnaud Quette <arnaud.quette@free.fr>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,10 +40,12 @@ int nutscan_avail_nut = 0;
 int nutscan_avail_snmp = 0;
 int nutscan_avail_usb = 0;
 int nutscan_avail_xml_http = 0;
+int nutscan_avail_modbus = 0;
 
 int nutscan_load_usb_library(const char *libname_path);
 int nutscan_load_snmp_library(const char *libname_path);
 int nutscan_load_neon_library(const char *libname_path);
+int nutscan_load_modbus_library(const char *libname_path);
 int nutscan_load_avahi_library(const char *libname_path);
 int nutscan_load_ipmi_library(const char *libname_path);
 int nutscan_load_upsclient_library(const char *libname_path);
@@ -86,6 +90,13 @@ void nutscan_init(void)
 	}
 	if (libname) {
 		nutscan_avail_xml_http = nutscan_load_neon_library(libname);
+		free(libname);
+	}
+#endif
+#ifdef WITH_MODBUS
+	libname = get_libname("libmodbus.so");
+	if (libname) {
+		nutscan_avail_modbus = nutscan_load_modbus_library(libname);
 		free(libname);
 	}
 #endif

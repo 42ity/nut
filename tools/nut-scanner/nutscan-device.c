@@ -34,6 +34,7 @@ const char * nutscan_device_type_strings[TYPE_END - 1] = {
 	"IPMI",
 	"Avahi",
 	"serial",
+	"Modbus",
 	};
 
 nutscan_device_t * nutscan_new_device()

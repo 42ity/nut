@@ -106,6 +106,9 @@ nutscan_device_t * nutscan_scan_usb();
 /* If sec->usec_timeout < 0 then the common usec_timeout arg overrides it */
 nutscan_device_t * nutscan_scan_xml_http_range(const char *start_ip, const char *end_ip, long usec_timeout, nutscan_xml_t * sec);
 
+nutscan_device_t * nutscan_scan_modbus_tcp(const char * start_ip, const char * stop_ip,long usec_timeout, int port);
+//nutscan_device_t * nutscan_scan_modbus_rtu(const char* serial_port, long usec_timeout // , serial param string);
+
 nutscan_device_t * nutscan_scan_nut(const char * startIP, const char * stopIP, const char * port, long usec_timeout);
 
 nutscan_device_t * nutscan_scan_avahi(long usec_timeout);

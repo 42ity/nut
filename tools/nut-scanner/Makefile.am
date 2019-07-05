@@ -68,7 +68,8 @@ endif
 libnutscan_la_SOURCES = scan_nut.c scan_ipmi.c nutscan-snmp.c \
 			nutscan-device.c nutscan-ip.c nutscan-display.c \
 			nutscan-init.c scan_usb.c scan_snmp.c scan_xml_http.c \
-			scan_avahi.c scan_eaton_serial.c nutscan-serial.c
+			scan_avahi.c scan_eaton_serial.c nutscan-serial.c \
+			scan_modbus.c
 libnutscan_la_LIBADD = $(NETLIBS) $(top_builddir)/drivers/libserial-nutscan.la
 if WITH_LIBLTDL
 libnutscan_la_LIBADD += $(LIBLTDL_LIBS)
@@ -147,6 +148,9 @@ if WITH_AVAHI
 endif
 if WITH_IPMI
   libnutscan_la_CFLAGS += $(LIBIPMI_CFLAGS)
+endif
+if WITH_MODBUS
+  libnutscan_la_CFLAGS += $(LIBMODBUS_CFLAGS)
 endif
 
 # C is not a header, but there is no dist_noinst_SOURCES

@@ -45,6 +45,7 @@ typedef enum nutscan_device_type {
 	TYPE_USB,
 	TYPE_SNMP,
 	TYPE_XML,
+	TYPE_MODBUS,
 	TYPE_NUT,
 	TYPE_IPMI,
 	TYPE_AVAHI,
