@@ -22,6 +22,7 @@ Build-Depends: debhelper (>= 8.1.3),
                libnss3-dev, libtool, libltdl-dev,
                liblua5.1-0-dev,
                lua5.1,
+               libmodbus-dev,
                pkg-config
 Build-Depends-Indep: asciidoc (>= 8.6.3),
                      docbook-xsl,
