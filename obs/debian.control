@@ -38,7 +38,7 @@ XS-Testsuite: autopkgtest
 Package: nut
 Architecture: all
 Section: metapackages
-Depends: ${misc:Depends}, nut-common (= ${binary:Version}), nut-server (= ${binary:Version}), nut-client (= ${binary:Version})
+Depends: ${misc:Depends}, nut-common (= ${binary:Version}), nut-server (= ${binary:Version}), nut-client (= ${binary:Version}), nut-modbus (= ${binary:Version})
 Description: network UPS tools - metapackage
  Network UPS Tools (NUT) is a client/server monitoring system that
  allows computers to share uninterruptible power supply (UPS) and
@@ -159,6 +159,19 @@ Description: network UPS tools - XML/HTTP driver
  This package provides netxml-ups, which supports UPS models from
  Eaton or MGE that use an XML/HTTP-based Network Management Card or
  Proxy.
+
+Package: nut-modbus
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, nut-server (= ${binary:Version})
+Description: network UPS tools - Modbus RTU/TCP driver
+ Network UPS Tools (NUT) is a client/server monitoring system that
+ allows computers to share uninterruptible power supply (UPS) and
+ power distribution unit (PDU) hardware. Clients access the hardware
+ through the server, and are notified whenever the power status
+ changes.
+ .
+ This package provides nutdrv_modbus, which supports devices from
+ a wide range of manufacturers, that use Modbus protocol, RTU or TCP.
 
 Package: nut-powerman-pdu
 Architecture: any
