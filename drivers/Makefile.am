@@ -47,7 +47,7 @@ SERIAL_USB_DRIVERLIST = \
 	nutdrv_qx
 NEONXML_DRIVERLIST = netxml-ups
 MACOSX_DRIVERLIST = macosx-ups
-MODBUS_DRIVERLIST = phoenixcontact_modbus
+MODBUS_DRIVERLIST = phoenixcontact_modbus nutdrv_modbus
 LINUX_I2C_DRIVERLIST = asem
 
 # distribute all drivers, even ones that are not built by default
@@ -271,7 +271,10 @@ macosx_ups_LDADD = $(LDADD_DRIVERS)
 macosx_ups_LDFLAGS = $(LDFLAGS) -framework IOKit -framework CoreFoundation
 macosx_ups_SOURCES = macosx-ups.c
 
-# Modbus driver
+# Modbus drivers
+nutdrv_modbus_SOURCES = nutdrv_modbus.c
+nutdrv_modbus_LDADD = $(LDADD_DRIVERS) $(LIBMODBUS_LIBS)
+
 phoenixcontact_modbus_SOURCES = phoenixcontact_modbus.c
 phoenixcontact_modbus_LDADD = $(LDADD_DRIVERS) $(LIBMODBUS_LIBS)
 
