@@ -5,6 +5,7 @@
  */
 
 #include "config.h"
+#include "nut_stdint.h"
 
 #include <string.h>
 #include <ctype.h>
