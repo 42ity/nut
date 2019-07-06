@@ -1,7 +1,8 @@
 /*  nutdrv_modbus.c - Driver for Modbus power devices (UPS, meters, ...)
  *
  *  Copyright (C)
- *    2012-2014  Arnaud Quette <arnaud.quette@free.fr>
+ *  	2012-2019	Arnaud Quette <arnaud.quette@free.fr>
+ * 		2019		Eaton
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,11 +20,10 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  * TODO list:
- * - everything...
- * - create the format for the "NUT Modbus definition file"
- * - complete initups
- * - create initinfo
- * - create updateinfo
+ * * make a generic engine out of it
+ * * create a DMF format for Modbus, including
+ * 		** to be completed...
+ *  * doc, ... 
  *
  * "NUT Modbus definition file"		xxx.modbus
  * # A comment header may contain information such as
@@ -33,13 +33,16 @@
  * [device.mfr: <Manufacturer name>]
  * [device.model: <Model name>]
  * <nut varname>: <modbus address>, <modbus register>, ..., <convertion function name>
+ *
  */
 
 #include "main.h"
 #include <modbus.h>
 
 #define DRIVER_NAME	"NUT Modbus driver"
-#define DRIVER_VERSION	"0.01"
+#define DRIVER_VERSION	"0.02"
+
+#define DEFAULT_MODBUS_TCP_PORT_STR	"502"
 
 /* Variables */
 modbus_t *ctx = NULL;
@@ -48,89 +51,61 @@ modbus_t *ctx = NULL;
 upsdrv_info_t upsdrv_info = {
 	DRIVER_NAME,
 	DRIVER_VERSION,
-	"Arnaud Quette <arnaud.quette@gmail.com>\n",
+	"Arnaud Quette <arnaud.quette@gmail.com>\n" \
+	"Baptiste Guyard <guyardbaptiste@eaton.com>",
 	DRV_EXPERIMENTAL,
 	{ NULL }
 };
 
-/* Modbus Read Registers */
+/* Read Modbus Registers */
 static int mb_read_value(modbus_t * ctx, int addr, int nb, uint16_t * dest)
 {
+	upsdebugx(1, "%s", __func__);
+
 	int r;
 	r = modbus_read_registers(ctx, addr, nb, dest);
 	if (r == -1) {
-		upslogx(LOG_ERR, "%s: modbus_read_registers(addr:%d, count:%d): %s (%s)", __func__, addr, nb, modbus_strerror(errno), device_path);
+		upslogx(LOG_ERR,
+				"%s: modbus_read_registers(addr:%d, count:%d): %s (%s)",
+				__func__, addr, nb, modbus_strerror(errno), device_path);
 		//errcount++;
 	}
 	return r;
 }
 
-/*char *mb_read_device_type()
-{
-	uint16_t tab_reg[64];
-	int ret;
-	char device_type[128];
-
-	upsdebugx(2, "mb_read_device_type");
-
-	memset (device_type, 0, 128);
-
-	//int modbus_read_registers(modbus_t *ctx, int addr, int nb, uint16_t *dest);
-	//ret = modbus_read_registers(ctx, 0x600, 8, tab_reg);
-	//int modbus_read_input_registers(modbus_t *ctx, int addr, int nb, uint16_t *dest);
-	ret = modbus_read_registers(ctx, 4099, 1, tab_reg);
-	if (ret == -1)
-		upsdebugx(1, "Error reading register 4099: %s", modbus_strerror(errno));
-	else {
-		upsdebugx(1, "Read register 4099 successfully");
-		upsdebugx(1, "device_type: %s", tab_reg);
-		dstate_setinfo ("device.type","%s", (int) tab_reg); 
-		//dstate_setinfo ("device.type","power-meter"); 
-	}
-	
-	return NULL;
-}*/
-
 void upsdrv_initinfo(void)
 {
-	upsdebugx(2, "upsdrv_initinfo");
-
 	uint16_t tab_reg[64];
-
-/* AQU:
-lire:
-
-	dstate_setinfo("device.mfr", ...);
-	dstate_setinfo("device.model", ...);
-	dstate_setinfo("device.serial", ...);
-	+ battery.type
-*/
-	// FIXME: test return value
-
 	int ret;
 
-//Device type
-	ret = modbus_read_registers(ctx, 4099, 1, tab_reg);
-	upsdebugx(1, "device.type: %i",tab_reg[0]);
-	dstate_setinfo ("device.type","%i",(int) (tab_reg[0]));
+	upsdebugx(1, "%s", __func__);
 
-//Firmware version
+	/* Device type */
+	/* ret = modbus_read_registers(ctx, 4099, 1, tab_reg);
+	upsdebugx(1, "device.type: %i",tab_reg[0]); */
+	dstate_setinfo ("device.type","power-meter");
+
+	/* Firmware version */
 	ret = mb_read_value(ctx, 4100, 1, tab_reg);	
-	upsdebugx(1, "firm_vers: %i",tab_reg[0]);
+	upsdebugx(1, "firmware version: %i",tab_reg[0]);
 	dstate_setinfo ("ups.firmware","%i",(int) (tab_reg[0]));
+	// FIXME: firmware is supposed to be a string!
 
-//PID (Product identification)
+	//PID (Product identification)
 	char serial[128];
 	ret = mb_read_value(ctx, 4104, 8, tab_reg);
 	for (int i = 0; i < ret; i++) {
 		if (tab_reg[i] != 0) {
+			/* FIXME: if it's the standard way to interpret strings,
+				make a function out of it */
 			serial[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
 			serial[(i * 2) + 1] = MODBUS_GET_LOW_BYTE(tab_reg[i]);
 		}
 	}
 	upsdebugx(1, "Serial: %s", serial);
-	dstate_setinfo ("device.serial", serial);
+	dstate_setinfo ("device.serial", "%s", serial);
 
+#if NOT_USEFUL
 //Protocol 
 	ret=mb_read_value(ctx,4111,1,tab_reg);
 	upsdebugx(1,"Protocol_type : %i",tab_reg[0]);
@@ -171,38 +146,36 @@ lire:
 	ret=mb_read_value(ctx,4117,1,tab_reg);
 	upsdebugx(1,"Value format : %i",tab_reg[0]);
 	dstate_setinfo("Unmapped_Value_format","%i",(int) (tab_reg[0]));
-//Reset energy command
+#endif /* NOT_USEFUL  */
+
+	//Reset energy command
+	// FIXME: map to a command
 	ret=mb_read_value(ctx,4118,1,tab_reg);
 	upsdebugx(1,"Reset energy counters command : %i",tab_reg[0]);
 	dstate_setinfo("Unmapped_Reset_energy_counters_command","%i",(int) (tab_reg[0]));
 
+	/* FIXME: check 'ret' for (communication) failure (<= 0)
+		and call dstate_datastale() */
 	dstate_dataok();
 	/* try to detect the device here - call fatal_with_errno(EXIT_FAILURE, ) if it fails */
 
-	//mb_read_mfr();
-
 	/* 1/ Open the NUT Modbus definition file and load the data
 	 * 2/ Iterate through these data and call dstate_setinfo */
-
-	/* dstate_setinfo("device.mfr", "skel manufacturer"); */
-	/* dstate_setinfo("device.model", "longrun 15000"); */
-	/* dstate_setinfo("device.type", "longrun 15000"); */
-	/* ... */
-
-	/* upsh.instcmd = instcmd; */
-	/* upsh.setvar = setvar; */
 }
 
-
-
+/* FIXME:
+ *	* create a preliminary mapping struct, to iterate over, and simplify code
+*/
 void upsdrv_updateinfo(void)
 {
 	uint16_t tab_reg[64];
 	int ret;
 
-// IMP Energy
+	upsdebugx(1, "%s", __func__);
+
+/* IMP Energy: input information, what comes from the Grid */
 	//Active Energy 1st phase T1, imp (Wh);
-	ret=mb_read_value(ctx,4119, 4, tab_reg);
+	ret=mb_read_value(ctx, 4119, 4, tab_reg);
 	float real = modbus_get_float_abcd(tab_reg);
 	upsdebugx(1, "RealEnergy_L1_T1_output : %f", real);
 	dstate_setinfo("Unmapped_RealEnergy_L1_T1_output", "%f", real*1000);
@@ -244,7 +217,7 @@ void upsdrv_updateinfo(void)
 	dstate_setinfo("Unmapped_RealEnergy_L3_T2_output", "%f", real*1000);
 
 //Active Energy Σ T2, imp (Wh);
-	ret=mb_read_value(ctx,4147, 4, tab_reg);
+	ret=mb_read_value(ctx, 4147, 4, tab_reg);
 	real = modbus_get_float_abcd(tab_reg);
 	upsdebugx(1, "RealEnergy_T2_output : %f", real);
 	dstate_setinfo("Unmapped_RealEnergy_T2_output", "%f", real*1000);
@@ -473,82 +446,34 @@ ret = mb_read_value(ctx, 4295, 2, tab_reg);
 	float powerFactor_L1 = modbus_get_float_abcd(tab_reg);
 	upsdebugx(1, "Power.Factor.L1 : %f", powerFactor_L1);
 	dstate_setinfo ("input.L1.powerfactor","%f", powerFactor_L1);
-//power factor cos ϕ phase2
-ret = mb_read_value(ctx, 4297, 2, tab_reg);
+
+	/* power factor cos ϕ phase2 */
+	ret = mb_read_value(ctx, 4297, 2, tab_reg);
 	float powerFactor_L2 = modbus_get_float_abcd(tab_reg);
 	upsdebugx(1, "Power.Factor.L2 : %f", powerFactor_L2);
 	dstate_setinfo ("input.L2.powerfactor","%f", powerFactor_L2);
-//power factor cos ϕ phase3
-ret = mb_read_value(ctx, 4299, 2, tab_reg);
+
+	/* power factor cos ϕ phase3 */
+	ret = mb_read_value(ctx, 4299, 2, tab_reg);
 	float powerFactor_L3 = modbus_get_float_abcd(tab_reg);
 	upsdebugx(1, "Power.Factor.L3 : %f", powerFactor_L3);
 	dstate_setinfo ("input.L3.powerfactor","%f", powerFactor_L3);
-//power factor cos ϕ Σ
-ret = mb_read_value(ctx, 4301, 2, tab_reg);
+
+	/* power factor cos ϕ Σ */
+	ret = mb_read_value(ctx, 4301, 2, tab_reg);
 	float powerFactor = modbus_get_float_abcd(tab_reg);
 	upsdebugx(1, "Power.Factor : %f", powerFactor);
 	dstate_setinfo ("input.powerfactor","%f", powerFactor);
 
-//frequency (Hz)
-ret = mb_read_value(ctx, 4303, 2, tab_reg);
+	/* frequency (Hz) */
+	ret = mb_read_value(ctx, 4303, 2, tab_reg);
 	float frequency = modbus_get_float_abcd(tab_reg);
 	upsdebugx(1, "Frequency : %f", frequency);
 	dstate_setinfo ("input.frequency","%f", frequency);
 
-dstate_dataok();
-
-
-
-/* AQU: a faire:
-lecture des mesures */
-/*uint16_t outputCurrent;
-
-mb_read_value(ctx, 265, 1, tab_reg);
-outputCurrent=tab_reg[0]
-upsdebugx(1, "outputCurrent %i", outputCurrent);
-	dstate_setinfo ("output.current", outputCurrent);*/
-
-
-/*	output.*
-	battery.*
-	input.*
-
- ex:
-	mb_read_value(ctx, 265, 1, tab_reg);
-	dstate_setinfo("output.current", "%d", (int) (tab_reg[0]);
-
-+ dstate_dataok();
-*/
-
-//	mb_read_mfr();
-//	dstate_setinfo ("device.model", "Bapt'man");
-//	dstate_dataok();
-
-	/* int flags; */
-	/* char temp[256]; */
-
-	/* ser_sendchar(upsfd, 'A'); */
-	/* ser_send(upsfd, "foo%d", 1234); */
-	/* ser_send_buf(upsfd, bincmd, 12); */
-
-	/*
-	 * ret = ser_get_line(upsfd, temp, sizeof(temp), ENDCHAR, IGNCHARS);
-	 *
-	 * if (ret < STATUS_LEN) {
-	 * 	upslogx(LOG_ERR, "Short read from UPS");
-	 *	dstate_datastale();
-	 *	return;
-	 * }
-	 */
-
-	/* dstate_setinfo("var.name", ""); */
-
-	/* if (ioctl(upsfd, TIOCMGET, &flags)) {
-	 *	upslog_with_errno(LOG_ERR, "TIOCMGET");
-	 *	dstate_datastale();
-	 *	return;
-	 * }
-	 */
+	/* FIXME: check 'ret' for (communication) failure (<= 0)
+		and call dstate_datastale() */
+	dstate_dataok();
 
 	/* status_init();
 	 *
@@ -570,6 +495,8 @@ upsdebugx(1, "outputCurrent %i", outputCurrent);
 
 void upsdrv_shutdown(void)
 {
+	upsdebugx(1, "%s", __func__);
+
 	/* tell the UPS to shut down, then return - DO NOT SLEEP HERE */
 
 	/* maybe try to detect the UPS here, but try a shutdown even if
@@ -619,48 +546,68 @@ void upsdrv_help(void)
 /* list flags and values that you want to receive via -x */
 void upsdrv_makevartable(void)
 {
-	/* allow '-x xyzzy' */
-	/* addvar(VAR_FLAG, "xyzzy", "Enable xyzzy mode"); */
+	char temp [MAX_STRING_SIZE];
 
-	/* allow '-x foo=<some value>' */
-	/* addvar(VAR_VALUE, "foo", "Override foo setting"); */
+	upsdebugx(1, "%s", __func__);
+
+	snprintf(temp, sizeof(temp), "Modbus TCP ID of the slave (default=%s).", "auto");
+	addvar (VAR_VALUE, "slave_id", temp);
+
+	snprintf(temp, sizeof(temp), "Modbus TCP port of the slave (default=%s).", DEFAULT_MODBUS_TCP_PORT_STR);
+	addvar (VAR_VALUE, "tcp_port", temp);
 }
 
 void upsdrv_initups(void)
 {
-	upsdebugx(2, "upsdrv_initups");
+	upsdebugx(1, "%s", __func__);
+
+	char *tcp_port = ((getval("tcp_port")!=NULL)?getval("tcp_port"):DEFAULT_MODBUS_TCP_PORT_STR);
+	char *slave_id = ((getval("slave_id")!=NULL)?getval("slave_id"):"auto");
 
 	/* Determine if it's a RTU (serial) or ethernet (TCP) connection */
 	/* FIXME: need to address windows COM port too!
-	 * || !strncmp(device_path[0], "COM", 3) */
+	 * is '|| !strncmp(device_path[0], "COM", 3)' sufficient? */
 	if (device_path[0] == '/') {
-		upsdebugx(2, "upsdrv_initups: RTU (serial) device");
+		upsdebugx(2, "%s: RTU (serial) device: %s", __func__, device_path);
 
 		/* FIXME: handle serial comm. params (params in ups.conf
 		 * and/or definition file) */
 		ctx = modbus_new_rtu(device_path, 115200, 'N', 8, 2);
 		if (ctx == NULL)
-			fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
+			upsdebugx(1, "Unable to create the libmodbus context");
+			//fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
 	}
 	else {
-		/* FIXME: upscli_splitaddr(device_path[0] ? device_path[0] : "localhost", &hostname, &port */
-		upsdebugx(2, "upsdrv_initups: TCP (network) device %s", device_path);
-		//ctx = modbus_new_tcp(device_path, 502);
-		ctx = modbus_new_tcp_pi(device_path, "502");
+		/* FIXME:
+			use upscli_splitaddr(device_path[0] ? device_path[0] : "localhost", &hostname, &port)
+			to get port? */
+		upsdebugx(2, "%s: TCP (network) device: %s:%s", __func__, device_path, tcp_port);
+		/* Note: modbus_new_tcp_pi() is supposed to support IPv6
+			FIXME: worth a test */
+		ctx = modbus_new_tcp_pi(device_path, tcp_port);
 		if (ctx == NULL)
-			fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
+			upsdebugx(1, "%s: Unable to create the libmodbus context", __func__);
+			//fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
 
 		if (modbus_connect(ctx) == -1) {
 			modbus_free(ctx);
-			fatalx(EXIT_FAILURE, "Connection failed: %s\n", modbus_strerror(errno));
+			upsdebugx(1, "%s: Modbus TCP connection failed: %s", __func__, modbus_strerror(errno));
+			// fatalx(EXIT_FAILURE, "%s: Modbus TCP connection failed: %s", __func__, modbus_strerror(errno));
 		}
 		else
-			upsdebugx(2, "upsdrv_initups: successfully connected to TCP (network) device");
+			upsdebugx(1, "upsdrv_initups: successfully connected to TCP (network) device");
 	}
 
-	modbus_set_slave(ctx, 2);
+	upsdebugx(2, "%s: Modbus slave_id: %s", __func__, slave_id);
+	if (strncmp(slave_id, "auto", 4)) {
+		modbus_set_slave(ctx, atoi(slave_id));
+	}
+	else {
+		/* FIXME: implement slave discovery, as per nutscan_modbus */
+		fatalx(EXIT_FAILURE, "slave_id='auto' is not yet supported!");
+	}
 
-// AQU: a gicler
+// FIXME: create timeout params (sec, usec) in upsdrv_makevartable()
 
 //	modbus_set_response_timeout(ctx, 2, 0);
 
@@ -668,19 +615,19 @@ void upsdrv_initups(void)
 //	uint32_t old_response_to_usec;
 //	modbus_get_response_timeout(ctx, &old_response_to_sec, &old_response_to_usec);
 //	upsdebugx(2, "response timeout: %i / %i", old_response_to_sec, old_response_to_usec);
+	// link to debug level (which one? 5?)
 	modbus_set_debug(ctx, TRUE);
 	modbus_set_error_recovery(ctx,
 							  MODBUS_ERROR_RECOVERY_LINK |
 							  MODBUS_ERROR_RECOVERY_PROTOCOL);
-
-
-//	mb_read_mfr();
 
 	/* don't try to detect the device here */
 }
 
 void upsdrv_cleanup(void)
 {
+	upsdebugx(1, "%s", __func__);
+
 	/* free(dynamic_mem); */
 	if (ctx != NULL) {
 		modbus_close(ctx);
