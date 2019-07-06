@@ -626,16 +626,23 @@ endif
 
 HTML_MACOSX_MANS = macosx-ups.html
 
-SRC_MODBUS_PAGES = phoenixcontact_modbus.txt
+SRC_MODBUS_PAGES = \
+	phoenixcontact_modbus.txt \
+	nutdrv_modbus.txt
+
 if WITH_MANS
-MAN_MODBUS_PAGES = phoenixcontact_modbus.8
+MAN_MODBUS_PAGES = \
+	phoenixcontact_modbus.8 \
+	nutdrv_modbus.8
 endif
 
 if WITH_MODBUS
    man8_MANS += $(MAN_MODBUS_PAGES)
 endif
 
-HTML_MODBUS_MANS = phoenixcontact_modbus.html
+HTML_MODBUS_MANS = \
+	phoenixcontact_modbus.html \
+	nutdrv_modbus.html
 
 SRC_LINUX_I2C_PAGES = asem.txt
 if WITH_MANS
