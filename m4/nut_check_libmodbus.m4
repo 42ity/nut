@@ -58,6 +58,7 @@ if test -z "${nut_have_libmodbus_seen}"; then
 	AC_CHECK_HEADERS(modbus.h, [nut_have_libmodbus=yes], [nut_have_libmodbus=no], [AC_INCLUDES_DEFAULT])
 	AC_CHECK_FUNCS(modbus_new_rtu, [], [nut_have_libmodbus=no])
 	AC_CHECK_FUNCS(modbus_new_tcp, [], [nut_have_libmodbus=no])
+	AC_CHECK_FUNCS(modbus_get_float_abcd, [], [AC_LIBOBJ(modbus_get_float_abcd)])
 
 	if test "${nut_have_libmodbus}" = "yes"; then
 		LIBMODBUS_CFLAGS="${CFLAGS}"

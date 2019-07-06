@@ -442,6 +442,7 @@ fi
 
 NUT_REPORT_FEATURE([build Modbus driver], [${nut_with_modbus}], [],
                                        [WITH_MODBUS], [Define to enable Modbus support])
+
 dnl ----------------------------------------------------------------------
 dnl Check for with-ipmi, and --with-freeipmi (or --with-openipmi)
 dnl Only one can be enabled at a time, with a preference for FreeIPMI
