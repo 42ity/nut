@@ -30,6 +30,7 @@ char * nutscan_device_type_string[TYPE_END]= {
 	"USB",
 	"SNMP",
 	"XML",
+	"MODBUS",
 	"NUT",
 	"IPMI",
 	"AVAHI",
