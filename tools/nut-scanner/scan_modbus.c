@@ -60,8 +60,13 @@ static int (*nut_modbus_set_slave)(modbus_t* ctx, int slave);
 static void (*nut_modbus_free)(modbus_t *ctx);
 static const char *(*nut_modbus_strerror)(int errnum);
 static int (*nut_modbus_read_registers)(modbus_t *ctx, int addr, int nb, uint16_t *dest);
-static int (*nut_modbus_set_response_timeout)(modbus_t *ctx, uint32_t to_sec, uint32_t to_usec);
+static int (*nut_modbus_set_response_timeout)(modbus_t *ctx, struct timeval *timeout);
+/* Unused
+static int (*nut_modbus_get_response_timeout)(modbus_t *ctx, struct timeval *timeout); */
+/* FIXME: proto changed after libmodbus 3.0.6!
+static int (*nut_modbus_set_response_timeout)(modbus_t *ctx, uint32_t *to_sec, uint32_t *to_usec);
 static int (*nut_modbus_get_response_timeout)(modbus_t *ctx, uint32_t *to_sec, uint32_t *to_usec);
+*/
 
 /* return 0 on error */
 int nutscan_load_modbus_library(const char *libname_path)
@@ -143,10 +148,11 @@ int nutscan_load_modbus_library(const char *libname_path)
 		goto err;
 	}
 
+	/*
 	*(void **) (&nut_modbus_get_response_timeout) = lt_dlsym(dl_handle, "modbus_get_response_timeout");
 	if ((dl_error = lt_dlerror()) != NULL)  {
 		goto err;
-	}
+	}*/
 
 	return 1;
 err:
