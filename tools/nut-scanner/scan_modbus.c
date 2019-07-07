@@ -297,15 +297,20 @@ static void * nutscan_scan_modbus_device(void * port_arg)
 		return NULL;
 	}
 	else
-		upsdebugx(1, "upsdrv_initups: successfully connected to TCP (network) device %s", port_name);
+		upsdebugx(1, "Successfully connected to Modbus TCP (network) device %s", port_name);
 
-	uint32_t old_response_to_sec;
+	/* uint32_t old_response_to_sec;
 	uint32_t old_response_to_usec;
 	(*nut_modbus_get_response_timeout)(ctx, &old_response_to_sec, &old_response_to_usec);
-	upsdebugx(2, "response timeout: %i / %i", old_response_to_sec, old_response_to_usec);
+	upsdebugx(2, "response timeout: %i / %i", old_response_to_sec, old_response_to_usec);*/
 
+	struct timeval response_timeout;
 	// FIXME: Check for lowering value, or parallelizing slaves check!
-	(*nut_modbus_set_response_timeout)(ctx, 0, 100000); // 100ms
+	response_timeout.tv_sec = 0;
+	response_timeout.tv_usec = 100000; // 100ms
+	(*nut_modbus_set_response_timeout)(ctx, &response_timeout);
+	// FIXME: interface has changed after libmodbus-3.0.6! Handle that
+	//(*nut_modbus_set_response_timeout)(ctx, 0, 100000); // 100ms
 
 	/* Now loop to find the slave(s) ID(s)
 		Note that RTU supports only 1
