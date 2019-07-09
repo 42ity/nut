@@ -80,6 +80,9 @@ void upsdrv_initinfo(void)
 
 	upsdebugx(1, "%s", __func__);
 
+	dstate_setinfo ("device.mfr","Eaton");
+	dstate_setinfo ("device.model","PX Meter");
+
 	/* Device type */
 	/* ret = modbus_read_registers(ctx, 4099, 1, tab_reg);
 	upsdebugx(1, "device.type: %i",tab_reg[0]); */
@@ -104,6 +107,7 @@ void upsdrv_initinfo(void)
 	}
 	upsdebugx(1, "Serial: %s", serial);
 	dstate_setinfo ("device.serial", "%s", serial);
+	// FIXME: value published is borked
 
 #if NOT_USEFUL
 //Protocol 
