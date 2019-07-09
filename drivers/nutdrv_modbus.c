@@ -163,9 +163,6 @@ void upsdrv_initinfo(void)
 	 * 2/ Iterate through these data and call dstate_setinfo */
 }
 
-/* FIXME:
- *	* create a preliminary mapping struct, to iterate over, and simplify code
-*/
 void upsdrv_updateinfo(void)
 {
 	uint16_t tab_reg[64];
@@ -173,12 +170,24 @@ void upsdrv_updateinfo(void)
 
 	upsdebugx(1, "%s", __func__);
 
+/* FIXME:
+ *	* create a preliminary mapping struct, to iterate over, and simplify code
+		int register_nb, int register_size, data_type; // FLOAT_ABCD, STRING, ...
+		char *nut_name;
+ *  * check ret for failure (see 1rst example below)
+ */
+
 /* IMP Energy: input information, what comes from the Grid */
 	//Active Energy 1st phase T1, imp (Wh);
-	ret=mb_read_value(ctx, 4119, 4, tab_reg);
-	float real = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "RealEnergy_L1_T1_output : %f", real);
-	dstate_setinfo("Unmapped_RealEnergy_L1_T1_output", "%f", real*1000);
+	ret = mb_read_value(ctx, 4119, 4, tab_reg);
+	if (ret != -1) {
+		float real = modbus_get_float_abcd(tab_reg);
+		upsdebugx(1, "RealEnergy_L1_T1_output : %f", real);
+		dstate_setinfo("Unmapped_RealEnergy_L1_T1_output", "%f", real*1000);
+	}
+	else
+		upsdebugx(1, "Error: failed to get %s from register %i",
+					"Unmapped_RealEnergy_L1_T1_output", 4119);
 
 //Active Energy 2nd phase T1, imp (Wh);
 	ret=mb_read_value(ctx,4123, 4, tab_reg);
@@ -475,7 +484,9 @@ ret = mb_read_value(ctx, 4295, 2, tab_reg);
 		and call dstate_datastale() */
 	dstate_dataok();
 
-	/* status_init();
+	/* Not useful when device.type != ups
+	 * we should get rid of this
+	 * status_init();
 	 *
 	 * if (ol)
 	 * 	status_set("OL");
@@ -574,8 +585,7 @@ void upsdrv_initups(void)
 		 * and/or definition file) */
 		ctx = modbus_new_rtu(device_path, 115200, 'N', 8, 2);
 		if (ctx == NULL)
-			upsdebugx(1, "Unable to create the libmodbus context");
-			//fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
+			fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
 	}
 	else {
 		/* FIXME:
@@ -586,13 +596,11 @@ void upsdrv_initups(void)
 			FIXME: worth a test */
 		ctx = modbus_new_tcp_pi(device_path, tcp_port);
 		if (ctx == NULL)
-			upsdebugx(1, "%s: Unable to create the libmodbus context", __func__);
-			//fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
+			fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
 
 		if (modbus_connect(ctx) == -1) {
 			modbus_free(ctx);
-			upsdebugx(1, "%s: Modbus TCP connection failed: %s", __func__, modbus_strerror(errno));
-			// fatalx(EXIT_FAILURE, "%s: Modbus TCP connection failed: %s", __func__, modbus_strerror(errno));
+			fatalx(EXIT_FAILURE, "%s: Modbus TCP connection failed: %s", __func__, modbus_strerror(errno));
 		}
 		else
 			upsdebugx(1, "upsdrv_initups: successfully connected to TCP (network) device");
@@ -603,20 +611,19 @@ void upsdrv_initups(void)
 		modbus_set_slave(ctx, atoi(slave_id));
 	}
 	else {
-		/* FIXME: implement slave discovery, as per nutscan_modbus */
+		/* FIXME: implement slave discovery, as per nutscan_modbus
+			but WARN that it's slow, and should be limited to exploration,
+			which should better be done with nut-scanner :D */
 		fatalx(EXIT_FAILURE, "slave_id='auto' is not yet supported!");
 	}
 
-// FIXME: create timeout params (sec, usec) in upsdrv_makevartable()
+	// FIXME: create timeout params (sec, usec) in upsdrv_makevartable()
+	//	modbus_set_response_timeout(ctx, 2, 0);
 
-//	modbus_set_response_timeout(ctx, 2, 0);
+	/* Enable Modbus library debug info */
+	if (nut_debug_level <= 5)
+		modbus_set_debug(ctx, TRUE);
 
-//	uint32_t old_response_to_sec;
-//	uint32_t old_response_to_usec;
-//	modbus_get_response_timeout(ctx, &old_response_to_sec, &old_response_to_usec);
-//	upsdebugx(2, "response timeout: %i / %i", old_response_to_sec, old_response_to_usec);
-	// link to debug level (which one? 5?)
-	modbus_set_debug(ctx, TRUE);
 	modbus_set_error_recovery(ctx,
 							  MODBUS_ERROR_RECOVERY_LINK |
 							  MODBUS_ERROR_RECOVERY_PROTOCOL);
