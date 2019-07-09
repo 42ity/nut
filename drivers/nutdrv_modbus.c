@@ -170,6 +170,7 @@ void upsdrv_initinfo(void)
 void upsdrv_updateinfo(void)
 {
 	uint16_t tab_reg[64];
+	float real;
 	int ret;
 
 	upsdebugx(1, "%s", __func__);
@@ -185,7 +186,7 @@ void upsdrv_updateinfo(void)
 	//Active Energy 1st phase T1, imp (Wh);
 	ret = mb_read_value(ctx, 4119, 4, tab_reg);
 	if (ret != -1) {
-		float real = modbus_get_float_abcd(tab_reg);
+		real = modbus_get_float_abcd(tab_reg);
 		upsdebugx(1, "RealEnergy_L1_T1_output : %f", real);
 		dstate_setinfo("Unmapped_RealEnergy_L1_T1_output", "%f", real*1000);
 	}
