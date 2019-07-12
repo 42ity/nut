@@ -512,26 +512,14 @@ ret = mb_read_value(ctx, 4295, 2, tab_reg);
 void upsdrv_shutdown(void)
 {
 	upsdebugx(1, "%s", __func__);
-
-	/* tell the UPS to shut down, then return - DO NOT SLEEP HERE */
-
-	/* maybe try to detect the UPS here, but try a shutdown even if
-	   it doesn't respond at first if possible */
-
-	/* replace with a proper shutdown function */
+	/* FIXME: shutdown only applies to UPS! */
 	fatalx(EXIT_FAILURE, "shutdown not supported");
-
-	/* you may have to check the line status since the commands
-	   for toggling power are frequently different for OL vs. OB */
-
-	/* OL: this must power cycle the load if possible */
-
-	/* OB: the load must remain off until the power returns */
 }
 
 /*
 static int instcmd(const char *cmdname, const char *extra)
 {
+	// FIXME: counter reset should go here
 	if (!strcasecmp(cmdname, "test.battery.stop")) {
 		ser_send_buf(upsfd, ...);
 		return STAT_INSTCMD_HANDLED;
@@ -569,6 +557,7 @@ void upsdrv_makevartable(void)
 	snprintf(temp, sizeof(temp), "Modbus TCP ID of the slave (default=%s).", "auto");
 	addvar (VAR_VALUE, "slave_id", temp);
 
+	/* FIXME: deprecate in favor of the standard ip:port notation */
 	snprintf(temp, sizeof(temp), "Modbus TCP port of the slave (default=%s).", DEFAULT_MODBUS_TCP_PORT_STR);
 	addvar (VAR_VALUE, "tcp_port", temp);
 }
@@ -577,8 +566,9 @@ void upsdrv_initups(void)
 {
 	upsdebugx(1, "%s", __func__);
 
-	char *tcp_port = ((getval("tcp_port")!=NULL)?getval("tcp_port"):DEFAULT_MODBUS_TCP_PORT_STR);
 	char *slave_id = ((getval("slave_id")!=NULL)?getval("slave_id"):"auto");
+	/* FIXME: use upscli_splitaddr, keep for a transition period, then remove */
+	char *tcp_port = ((getval("tcp_port")!=NULL)?getval("tcp_port"):DEFAULT_MODBUS_TCP_PORT_STR);
 
 	/* Determine if it's a RTU (serial) or ethernet (TCP) connection */
 	/* FIXME: need to address windows COM port too!
@@ -594,11 +584,11 @@ void upsdrv_initups(void)
 	}
 	else {
 		/* FIXME:
-			use upscli_splitaddr(device_path[0] ? device_path[0] : "localhost", &hostname, &port)
-			to get port? */
+			* use upscli_splitaddr(device_path[0] ? device_path[0] : "localhost", &hostname, &port)
+			to get port
+			* also propagate to nut-scanner & ftys */
 		upsdebugx(2, "%s: TCP (network) device: %s:%s", __func__, device_path, tcp_port);
-		/* Note: modbus_new_tcp_pi() is supposed to support IPv6
-			FIXME: worth a test */
+		/* FIXME: modbus_new_tcp_pi() is supposed to support IPv6, worth a test */
 		ctx = modbus_new_tcp_pi(device_path, tcp_port);
 		if (ctx == NULL)
 			fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
