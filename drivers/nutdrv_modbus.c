@@ -40,7 +40,7 @@
 #include <modbus.h>
 
 #define DRIVER_NAME	"NUT Modbus driver"
-#define DRIVER_VERSION	"0.02"
+#define DRIVER_VERSION	"0.03"
 
 #define DEFAULT_MODBUS_TCP_PORT_STR	"502"
 
@@ -57,143 +57,101 @@ upsdrv_info_t upsdrv_info = {
 	{ NULL }
 };
 
-/* Read Modbus Registers */
-static int mb_read_value(modbus_t * ctx, int addr, int nb, uint16_t * dest)
-{
-	upsdebugx(1, "%s", __func__);
+/* modes to process data in modbus_info_t */
+#define INFO_MODE_INIT   0
+#define INFO_MODE_UPDATE 1
 
-	int r;
-	r = modbus_read_registers(ctx, addr, nb, dest);
-	if (r == -1) {
-		upslogx(LOG_ERR,
-				"%s: modbus_read_registers(addr:%d, count:%d): %s (%s)",
-				__func__, addr, nb, modbus_strerror(errno), device_path);
-		//errcount++;
-	}
-	return r;
-}
+enum modbus_data_types {
+	MODBUS_DATA_TYPE_FLOAT_ABCD = 1,
+	MODBUS_DATA_TYPE_STRING
+};
 
-void upsdrv_initinfo(void)
-{
-	uint16_t tab_reg[64];
-	int ret;
+enum info_flags_t {
+	INFO_FLAG_NONE = 0,
+	INFO_FLAG_STATIC,
+	INFO_FLAG_ABSENT,
+	INFO_FLAG_OK
+};
 
-	upsdebugx(1, "%s", __func__);
+/* Mapping structure */
+typedef struct {
+	const char   *info_type;  /* INFO_ or CMD_ element */
+	int           info_flags; /* flags to set in addinfo */
+	double        info_len;   /* length of strings if ST_FLAG_STRING, multiplier otherwise. */
+	int           modbus_register_nb;
+	int           modbus_register_size;
+	int           modbus_data_type;
+	const char   *default_value;
+	int flags;      /* driver internal flags */
+} modbus_info_t;
 
-	dstate_setinfo ("device.mfr","Eaton");
-	dstate_setinfo ("device.model","PX Meter");
 
-	/* Device type */
-	/* ret = modbus_read_registers(ctx, 4099, 1, tab_reg);
-	upsdebugx(1, "device.type: %i",tab_reg[0]); */
-	dstate_setinfo ("device.type","power-meter");
+/* Modbus to NUT lookup table for Eaton EMECMODB */
+static modbus_info_t eaton_pwmeter_emecmodb[] = {
 
-	/* Firmware version */
-	ret = mb_read_value(ctx, 4100, 1, tab_reg);	
-	upsdebugx(1, "firmware version: %i",tab_reg[0]);
-	dstate_setinfo ("ups.firmware","%i",(int) (tab_reg[0]));
-	// FIXME: firmware is supposed to be a string!
+	/* Device collection */
+/*
+	{ "device.mfr", ST_FLAG_STRING, 6, 0, 0, MODBUS_DATA_TYPE_FLOAT_ABCD,
+		"EATON", INFO_FLAG_STATIC | INFO_FLAG_ABSENT | INFO_FLAG_OK },
+	{ "device.model", ST_FLAG_STRING, SU_INFOSIZE, 0, 0, MODBUS_DATA_TYPE_FLOAT_ABCD,
+		"PX Meter EMECMODB", INFO_FLAG_STATIC | INFO_FLAG_ABSENT | INFO_FLAG_OK },
+	{ "device.type", ST_FLAG_STRING, SU_INFOSIZE, 0, 0, MODBUS_DATA_TYPE_FLOAT_ABCD,
+		"power-meter", INFO_FLAG_STATIC | INFO_FLAG_ABSENT | INFO_FLAG_OK },
 
-	//PID (Product identification)
-	char serial[128];
-	ret = mb_read_value(ctx, 4104, 8, tab_reg);
-	for (int i = 0; i < ret; i++) {
-		if (tab_reg[i] != 0) {
-			/* FIXME: if it's the standard way to interpret strings,
-				make a function out of it */
-			serial[i * 2] = MODBUS_GET_HIGH_BYTE(tab_reg[i]);
-			serial[(i * 2) + 1] = MODBUS_GET_LOW_BYTE(tab_reg[i]);
-		}
-	}
-	upsdebugx(1, "Serial: %s", serial);
-	dstate_setinfo ("device.serial", "%s", serial);
-	// FIXME: value published is borked
 
-#if NOT_USEFUL
-//Protocol 
-	ret=mb_read_value(ctx,4111,1,tab_reg);
-	upsdebugx(1,"Protocol_type : %i",tab_reg[0]);
-	dstate_setinfo("Unmapped_protocolType","%i",(int) (tab_reg[0]));
-	
-//Baudrate 1200,2400,4800,9600,19200 ou 38400 
-	ret=mb_read_value(ctx,4112,1,tab_reg);
-	upsdebugx(1,"Speed : %i",tab_reg[0]);
-	dstate_setinfo("Unmapped_Speed","%i",(int) (tab_reg[0]));
-
-//Parity
-	char parity[5];
-	ret=mb_read_value(ctx,4113,1,tab_reg);
-	if (tab_reg[0]==0)
-		strcpy(parity , "none");
-	else {if (tab_reg[0]==1)
-		strcpy(parity , "even"); 
-		else {strcpy(parity , "odd");
-			}
-		}
-	
-	upsdebugx(1,"Parity : %s",parity);
-	dstate_setinfo("Unmapped_Parity","%s",parity);
-// Stop bits
-	ret=mb_read_value(ctx,4114,1,tab_reg);
-	upsdebugx(1,"Stop_bits : %i",tab_reg[0]);
-	dstate_setinfo("Unmapped_Stop_bits","%i",(int) (tab_reg[0]));
-
-//Modbus address, Slave ID
-	ret=mb_read_value(ctx,4115,1,tab_reg);
-	upsdebugx(1,"Modbus address : %i",tab_reg[0]);
-	dstate_setinfo("ups.productid","%i",(int) (tab_reg[0]));
-//Reset interface command
-	ret=mb_read_value(ctx,4116,1,tab_reg);
-	upsdebugx(1,"Reset interface command : %i",tab_reg[0]);
-	dstate_setinfo("Unmapped_ResetInterfaceCommand","%i",(int) (tab_reg[0]));
-//Value format
-	ret=mb_read_value(ctx,4117,1,tab_reg);
-	upsdebugx(1,"Value format : %i",tab_reg[0]);
-	dstate_setinfo("Unmapped_Value_format","%i",(int) (tab_reg[0]));
-#endif /* NOT_USEFUL  */
-
-	//Reset energy command
-	// FIXME: map to a command
-	ret=mb_read_value(ctx,4118,1,tab_reg);
-	upsdebugx(1,"Reset energy counters command : %i",tab_reg[0]);
-	dstate_setinfo("Unmapped_Reset_energy_counters_command","%i",(int) (tab_reg[0]));
-
-	/* FIXME: check 'ret' for (communication) failure (<= 0)
-		and call dstate_datastale() */
-	dstate_dataok();
-	/* try to detect the device here - call fatal_with_errno(EXIT_FAILURE, ) if it fails */
-
-	/* 1/ Open the NUT Modbus definition file and load the data
-	 * 2/ Iterate through these data and call dstate_setinfo */
-}
-
-void upsdrv_updateinfo(void)
-{
-	uint16_t tab_reg[64];
-	float real;
-	int ret;
-
-	upsdebugx(1, "%s", __func__);
-
-/* FIXME:
- *	* create a preliminary mapping struct, to iterate over, and simplify code
-		int register_nb, int register_size, data_type; // FLOAT_ABCD, STRING, ...
-		char *nut_name;
- *  * check ret for failure (see 1rst example below)
+	dstate_setinfo ("device.type", "power-meter");
  */
+	/* FIXME:
+	 * IMP Energy: input information, what comes from the Grid?
+	 * */
+	//	float Active Power 1st phase (W);
+	{ "input.L1.realpower", 0, 1000, 4151, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//	float Active Power 2nd phase (W);
+	{ "input.L2.realpower", 0, 1000, 4153, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//	float Active Power 3rd phase (W);
+	{ "input.L3.realpower", 0, 1000, 4155, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//  Active Power - Sum of all phases (W);
+	{ "input.realpower", 0, 1000, 4157, 4, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//L1-N voltage (V)
+	{ "input.L1-N.voltage", 0, 1, 4267, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//L2-N voltage (V)
+	{ "input.L2-N.voltage", 0, 1, 4269, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//L3-N voltage (V)
+	{ "input.L3-N.voltage", 0, 1, 4271, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//L1-L2 voltage (V)
+	{ "input.L1-L2.voltage", 0, 1, 4273, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//L2-L3 voltage (V)
+	{ "input.L2-L3.voltage", 0, 1, 4275, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//L3-L1 voltage (V)
+	{ "input.L3-L1.voltage", 0, 1, 4277, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//phase1 current (A)
+	{ "input.L1.current", 0, 1, 4279, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//phase2 current (A)
+	{ "input.L2.current", 0, 1, 4281, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//phase3 current (A)
+	{ "input.L3.current", 0, 1, 4283, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//apparent power phase1 (VA)
+	{ "input.L1.power", 0, 1000, 4285, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//apparent power phase2 (VA)
+	{ "input.L2.power", 0, 1000, 4287, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//apparent power phase3 (VA)
+	{ "input.L3.power", 0, 1000, 4289, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//apparent power - sum (VA)
+	{ "input.power", 0, 1000, 4291, 4, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	//power factor cos phi phase1
+	{ "input.L1.powerfactor", 0, 1, 4295, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	/* power factor cos phi phase2 */
+	{ "input.L2.powerfactor", 0, 1, 4297, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	/* power factor cos phi phase3 */
+	{ "input.L3.powerfactor", 0, 1, 4299, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	/* power factor cos phi - sum */
+	{ "input.powerfactor", 0, 1, 4301, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
+	/* frequency (Hz) */
+	{ "input.frequency", 0, 1, 4303, 2, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 },
 
-/* IMP Energy: input information, what comes from the Grid */
-	//Active Energy 1st phase T1, imp (Wh);
-	ret = mb_read_value(ctx, 4119, 4, tab_reg);
-	if (ret != -1) {
-		real = modbus_get_float_abcd(tab_reg);
-		upsdebugx(1, "RealEnergy_L1_T1_output : %f", real);
-		dstate_setinfo("Unmapped_RealEnergy_L1_T1_output", "%f", real*1000);
-	}
-	else
-		upsdebugx(1, "Error: failed to get %s from register %i",
-					"Unmapped_RealEnergy_L1_T1_output", 4119);
-
+	/* Active Energy 1st phase T1, imp (Wh);
+	{ "Unmapped_RealEnergy_L1_T1_output", 0, 1000, 4119, 4, MODBUS_DATA_TYPE_FLOAT_ABCD, NULL, 0 }, */
+#if 0
 //Active Energy 2nd phase T1, imp (Wh);
 	ret=mb_read_value(ctx,4123, 4, tab_reg);
 	real = modbus_get_float_abcd(tab_reg);
@@ -236,31 +194,6 @@ void upsdrv_updateinfo(void)
 	upsdebugx(1, "RealEnergy_T2_output : %f", real);
 	dstate_setinfo("Unmapped_RealEnergy_T2_output", "%f", real*1000);
 // end of IMP
-
-
-//	float Active Power 1st phase (W);
-	ret=mb_read_value(ctx, 4151,2, tab_reg);
-	real = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "input.L1.realpower : %f",real);
-	dstate_setinfo("input.L1.realpower", "%f", real*1000);
-	
-//	float Active Power 2nd phase (W);
-	ret=mb_read_value(ctx, 4153, 2, tab_reg);
-	real = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "input.L2.realpower : %f",real);
-	dstate_setinfo("input.L2.realpower", "%f", real*1000);
-
-//	float Active Power 3rd phase (W);
-	ret=mb_read_value(ctx,4155, 2, tab_reg);
-	real = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "input.L3.realpower : %f", real);
-	dstate_setinfo("input.L3.realpower", "%f", real*1000);
-
-//  Active Power Σ (W);
-	ret = mb_read_value(ctx, 4157, 4, tab_reg);
-	float realpower = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "input.realpower : %f", realpower);
-	dstate_setinfo ("input.realpower","%f", realpower*1000);
 
 //Active Energy 1st phase T1, exp (Wh);
 	ret=mb_read_value(ctx,4161, 4, tab_reg);
@@ -358,7 +291,6 @@ void upsdrv_updateinfo(void)
 	upsdebugx(1, "ReactiveEnergy_T2 : %f", real);
 	dstate_setinfo("ReactiveEnergy_T2", "%f", real*1000);
 
-
 //Reactive Power 1st phase (var);
 	ret=mb_read_value(ctx,4257, 2, tab_reg);
 	real = modbus_get_float_abcd(tab_reg);
@@ -382,131 +314,140 @@ void upsdrv_updateinfo(void)
 	real = modbus_get_float_abcd(tab_reg);
 	upsdebugx(1, "ReactivePower : %f", real);
 	dstate_setinfo("Unmapped_ReactivePower", "%f", real*1000);
+#endif
 
+	/* end of structure. */
+	{ NULL, 0, 0, 0, 0, 0, NULL, 0 }
+};
 
+/* Read Modbus Registers */
+static int mb_read_value(modbus_t * ctx, int addr, int nb, uint16_t * dest)
+{
+	upsdebugx(1, "%s", __func__);
 
-//L1-N voltage (V)
-ret = mb_read_value(ctx, 4267, 2, tab_reg);
-	float voltage = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Voltage_L1_N : %f", voltage);
-	dstate_setinfo ("input.L1-N.voltage","%f", voltage);
+	// FIXME: increase timeout in case of failure?
+	int r = -1, i = 3;
+	while ((r == -1) && i > 0) {
+		upsdebugx(3, "%s: try %i/3", __func__, i);
+		r = modbus_read_registers(ctx, addr, nb, dest);
+		if (r == -1) {
+			upsdebugx(3, "%s: ERROR in modbus_read_registers(addr:%d, count:%d): %s (%s)",
+					__func__, addr, nb, modbus_strerror(errno), device_path);
+			i--;
+		}
+	}
+	/* FIXME: invalidate data after 3 unsuccessful tries? */
+	return r;
+}
 
-//L2-N voltage (V)
-ret = mb_read_value(ctx, 4269, 2, tab_reg);
-	voltage = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Voltage_L2_N : %f", voltage);
-	dstate_setinfo ("input.L2-N.voltage","%f", voltage);
-//L3-N voltage (V)
-ret = mb_read_value(ctx, 4271, 2, tab_reg);
-	voltage = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Voltage_L3_N : %f", voltage);
-	dstate_setinfo ("input.L3-N.voltage","%f", voltage);
-//L1-L2 voltage (V)
-ret = mb_read_value(ctx, 4273, 2, tab_reg);
-	voltage = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Voltage_L1_L2 : %f", voltage);
-	dstate_setinfo ("input.L1-L2.voltage","%f", voltage);
-//L2-L3 voltage (V)
-ret = mb_read_value(ctx, 4275, 2, tab_reg);
-	voltage = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Voltage_L2_L3 : %f", voltage);
-	dstate_setinfo ("input.L2-L3.voltage","%f", voltage);
-//L3-L1 voltage (V)
-ret = mb_read_value(ctx, 4277, 2, tab_reg);
-	voltage = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Voltage_L3_L1 : %f", voltage);
-	dstate_setinfo ("input.L3-L1.voltage","%f", voltage);
+void upsdrv_initinfo(void)
+{
+	uint16_t tab_reg[64];
+	int ret;
 
-//phase1 current (A)
-ret = mb_read_value(ctx, 4279, 2, tab_reg);
-	float current = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Current.L1 : %f", current);
-	dstate_setinfo ("input.L1.current","%f", current);
-//phase2 current (A)
-ret = mb_read_value(ctx, 4281, 2, tab_reg);
-	current = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Current.L2 : %f", current);
-	dstate_setinfo ("input.L2.current.L2","%f", current);
-//phase3 current (A)
-ret = mb_read_value(ctx, 4283, 2, tab_reg);
-	current = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Current.L3 : %f", current);
-	dstate_setinfo ("input.L3.current","%f", current);
+	upsdebugx(1, "%s", __func__);
 
-//apparent power phase1 (VA)
-ret = mb_read_value(ctx, 4285, 2, tab_reg);
-	float power = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Power.L1 : %f", power);
-	dstate_setinfo ("input.L1.power","%f", power*1000);
-//apparent power phase2 (VA)
-ret = mb_read_value(ctx, 4287, 2, tab_reg);
-	power = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Power.L2 : %f", power);
-	dstate_setinfo ("input.L2.power.L2","%f", power*1000);
-//apparent power phase3 (VA)
-ret = mb_read_value(ctx, 4289, 2, tab_reg);
-	power = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Power.L3 : %f", power);
-	dstate_setinfo ("input.L3.power","%f", power*1000);
- 
-//apparent power Σ (VA)
-ret = mb_read_value(ctx, 4291, 4, tab_reg);
-	power = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Power : %f", power);
-	dstate_setinfo ("input.power","%f", power*1000);
+	/* FIXME: switch to modbus_info_t */
+	dstate_setinfo ("device.mfr", "Eaton");
+	dstate_setinfo ("device.model", "PX Meter EMECMODB");
+	dstate_setinfo ("device.type", "power-meter");
 
-//power factor cos ϕ phase1
-ret = mb_read_value(ctx, 4295, 2, tab_reg);
-	float powerFactor_L1 = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Power.Factor.L1 : %f", powerFactor_L1);
-	dstate_setinfo ("input.L1.powerfactor","%f", powerFactor_L1);
+	/* Device type identifies the phasing type */
+	ret = modbus_read_registers(ctx, 4099, 1, tab_reg);
+	upsdebugx(3, "device type identifier: %i", tab_reg[0]);
+	switch(tab_reg[0]) {
+		case 1: /* three-phase full */
+		case 2: /* three-phase basic */
+			dstate_setinfo ("input_phases", "3");
+			break;
+		case 3: /* single-phase full */
+		case 4: /* single-phase basic */
+			dstate_setinfo ("input_phases", "1");
+			break;
+	}
 
-	/* power factor cos ϕ phase2 */
-	ret = mb_read_value(ctx, 4297, 2, tab_reg);
-	float powerFactor_L2 = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Power.Factor.L2 : %f", powerFactor_L2);
-	dstate_setinfo ("input.L2.powerfactor","%f", powerFactor_L2);
+	/* Firmware version */
+	memset(tab_reg, 0, sizeof(tab_reg));
+	ret = mb_read_value(ctx, 4100, 1, tab_reg);
+	upsdebugx(1, "firmware version: %i",tab_reg[0]);
+	dstate_setinfo ("device.firmware","%i",(int) (tab_reg[0]));
 
-	/* power factor cos ϕ phase3 */
-	ret = mb_read_value(ctx, 4299, 2, tab_reg);
-	float powerFactor_L3 = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Power.Factor.L3 : %f", powerFactor_L3);
-	dstate_setinfo ("input.L3.powerfactor","%f", powerFactor_L3);
+	//PID (Product identification)
+#if 0
+	char serial[15];
+	memset(serial, 0, sizeof(serial));
+	for (int i = 0; i < 7; i++) {
 
-	/* power factor cos ϕ Σ */
-	ret = mb_read_value(ctx, 4301, 2, tab_reg);
-	float powerFactor = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Power.Factor : %f", powerFactor);
-	dstate_setinfo ("input.powerfactor","%f", powerFactor);
-
-	/* frequency (Hz) */
-	ret = mb_read_value(ctx, 4303, 2, tab_reg);
-	float frequency = modbus_get_float_abcd(tab_reg);
-	upsdebugx(1, "Frequency : %f", frequency);
-	dstate_setinfo ("input.frequency","%f", frequency);
-
-	/* FIXME: check 'ret' for (communication) failure (<= 0)
-		and call dstate_datastale() */
+		ret = mb_read_value(ctx, 4104 + i, 1, tab_reg);
+		if (ret != -1) {
+			upsdebugx(2, "%s: received '%c%c'", __func__,
+				MODBUS_GET_HIGH_BYTE(tab_reg[0]),
+				MODBUS_GET_LOW_BYTE(tab_reg[0]));
+			snprintfcat(serial, 15, "%c%c",
+				MODBUS_GET_HIGH_BYTE(tab_reg[0]),
+				MODBUS_GET_LOW_BYTE(tab_reg[0]));
+		}
+		else
+			upsdebugx(2, "Failed to received register %i", 4104 + i);
+	}
+	upsdebugx(1, "Part number: %s", &serial[0]);
+	dstate_setinfo ("device.part", "%s", serial);
+	// FIXME: value published is borked with '4"'
+#endif
 	dstate_dataok();
 
-	/* Not useful when device.type != ups
-	 * we should get rid of this
-	 * status_init();
-	 *
-	 * if (ol)
-	 * 	status_set("OL");
-	 * else
-	 * 	status_set("OB");
-	 * ...
-	 *
-	 * status_commit();
-	 *
-	 * dstate_dataok();
-	 */
+	/* 1/ Open the NUT Modbus definition file and load the data
+	 * 2/ Iterate through these data and call dstate_setinfo */
+}
 
-	/*
-	 * poll_interval = 2;
-	 */
+void upsdrv_updateinfo(void)
+{
+	modbus_info_t *mb_info_p;
+	int valid_data = 0; /* 1 to call dstate_dataok(), 0 for _datastale() */
+	uint16_t tab_reg[64];
+	float real;
+	int ret;
+
+	upsdebugx(1, "%s", __func__);
+
+	/* Loop through all mapping entries for the current_device_number */
+	for (mb_info_p = &eaton_pwmeter_emecmodb[0]; mb_info_p->info_type != NULL ; mb_info_p++) {
+
+		/* Check if we are asked to stop */
+		if (exit_flag != 0) {
+			upsdebugx(1, "%s: aborting because exit_flag was set", __func__);
+			return;
+		}
+
+		memset(tab_reg, 0, sizeof(tab_reg));
+		ret = mb_read_value(ctx,
+				mb_info_p->modbus_register_nb,
+				mb_info_p->modbus_register_size, tab_reg);
+		if (ret != -1) {
+			valid_data = 1;
+			switch (mb_info_p->modbus_data_type) {
+				case MODBUS_DATA_TYPE_FLOAT_ABCD:
+					real = modbus_get_float_abcd(tab_reg);
+					upsdebugx(1, "received value: %s: %.4f", mb_info_p->info_type, real);
+					/* Publish value, with factor applied */
+					dstate_setinfo(mb_info_p->info_type, "%.4f", real * mb_info_p->info_len);
+					break;
+				case MODBUS_DATA_TYPE_STRING:
+				default:
+					// FIXME:
+					break;
+			}
+		}
+		else
+			upsdebugx(1, "Error: failed to get %s from register %i",
+						mb_info_p->info_type, mb_info_p->modbus_register_nb);
+	}
+
+	/* check for (communication) status */
+	if (valid_data)
+		dstate_dataok();
+	else
+		dstate_datastale();
 }
 
 void upsdrv_shutdown(void)
@@ -527,6 +468,56 @@ static int instcmd(const char *cmdname, const char *extra)
 
 	upslogx(LOG_NOTICE, "instcmd: unknown command [%s]", cmdname);
 	return STAT_INSTCMD_UNKNOWN;
+
+#if NOT_USEFUL
+//Protocol
+	ret=mb_read_value(ctx,4111,1,tab_reg);
+	upsdebugx(1,"Protocol_type : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_protocolType","%i",(int) (tab_reg[0]));
+
+//Baudrate 1200,2400,4800,9600,19200 ou 38400
+	ret=mb_read_value(ctx,4112,1,tab_reg);
+	upsdebugx(1,"Speed : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_Speed","%i",(int) (tab_reg[0]));
+
+//Parity
+	char parity[5];
+	ret=mb_read_value(ctx,4113,1,tab_reg);
+	if (tab_reg[0]==0)
+		strcpy(parity , "none");
+	else {if (tab_reg[0]==1)
+		strcpy(parity , "even");
+		else {strcpy(parity , "odd");
+			}
+		}
+
+	upsdebugx(1,"Parity : %s",parity);
+	dstate_setinfo("Unmapped_Parity","%s",parity);
+// Stop bits
+	ret=mb_read_value(ctx,4114,1,tab_reg);
+	upsdebugx(1,"Stop_bits : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_Stop_bits","%i",(int) (tab_reg[0]));
+
+//Modbus address, Slave ID
+	ret=mb_read_value(ctx,4115,1,tab_reg);
+	upsdebugx(1,"Modbus address : %i",tab_reg[0]);
+	dstate_setinfo("ups.productid","%i",(int) (tab_reg[0]));
+//Reset interface command
+	ret=mb_read_value(ctx,4116,1,tab_reg);
+	upsdebugx(1,"Reset interface command : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_ResetInterfaceCommand","%i",(int) (tab_reg[0]));
+//Value format
+	ret=mb_read_value(ctx,4117,1,tab_reg);
+	upsdebugx(1,"Value format : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_Value_format","%i",(int) (tab_reg[0]));
+#endif // NOT_USEFUL
+
+	//Reset energy command
+	addcmd (reset.counters.energy.{all,active, reactive} // 3,1,2)
+	// FIXME: map to a command
+	ret=mb_read_value(ctx,4118,1,tab_reg);
+	upsdebugx(1,"Reset energy counters command : %i",tab_reg[0]);
+	dstate_setinfo("Unmapped_Reset_energy_counters_command","%i",(int) (tab_reg[0]));
 }
 */
 
@@ -570,11 +561,13 @@ void upsdrv_initups(void)
 	/* FIXME: use upscli_splitaddr, keep for a transition period, then remove */
 	char *tcp_port = ((getval("tcp_port")!=NULL)?getval("tcp_port"):DEFAULT_MODBUS_TCP_PORT_STR);
 
+	upsdebugx(2, "%s: connecting to Modbus device %s", __func__, device_path);
+
 	/* Determine if it's a RTU (serial) or ethernet (TCP) connection */
 	/* FIXME: need to address windows COM port too!
 	 * is '|| !strncmp(device_path[0], "COM", 3)' sufficient? */
 	if (device_path[0] == '/') {
-		upsdebugx(2, "%s: RTU (serial) device: %s", __func__, device_path);
+		upsdebugx(2, "%s: Modbus RTU (serial) device: %s", __func__, device_path);
 
 		/* FIXME: handle serial comm. params (params in ups.conf
 		 * and/or definition file) */
@@ -587,20 +580,22 @@ void upsdrv_initups(void)
 			* use upscli_splitaddr(device_path[0] ? device_path[0] : "localhost", &hostname, &port)
 			to get port
 			* also propagate to nut-scanner & ftys */
-		upsdebugx(2, "%s: TCP (network) device: %s:%s", __func__, device_path, tcp_port);
+		upsdebugx(2, "%s: Modbus TCP (network) device: %s:%s", __func__, device_path, tcp_port);
 		/* FIXME: modbus_new_tcp_pi() is supposed to support IPv6, worth a test */
 		ctx = modbus_new_tcp_pi(device_path, tcp_port);
 		if (ctx == NULL)
 			fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
-
-		if (modbus_connect(ctx) == -1) {
-			modbus_free(ctx);
-			fatalx(EXIT_FAILURE, "%s: Modbus TCP connection failed: %s", __func__, modbus_strerror(errno));
-		}
-		else
-			upsdebugx(1, "upsdrv_initups: successfully connected to TCP (network) device");
 	}
 
+	/* Connect to the device */
+	if (modbus_connect(ctx) == -1) {
+		modbus_free(ctx);
+		fatalx(EXIT_FAILURE, "%s: Modbus TCP connection failed: %s", __func__, modbus_strerror(errno));
+	}
+	else
+		upsdebugx(1, "upsdrv_initups: successfully connected to Modbus device");
+
+	/* Set the target slave */
 	upsdebugx(2, "%s: Modbus slave_id: %s", __func__, slave_id);
 	if (strncmp(slave_id, "auto", 4)) {
 		modbus_set_slave(ctx, atoi(slave_id));
@@ -612,16 +607,25 @@ void upsdrv_initups(void)
 		fatalx(EXIT_FAILURE, "slave_id='auto' is not yet supported!");
 	}
 
-	// FIXME: create timeout params (sec, usec) in upsdrv_makevartable()
-	//	modbus_set_response_timeout(ctx, 2, 0);
 
 	/* Enable Modbus library debug info */
-	if (nut_debug_level <= 5)
+	if (nut_debug_level >= 5)
 		modbus_set_debug(ctx, TRUE);
 
 	modbus_set_error_recovery(ctx,
 							  MODBUS_ERROR_RECOVERY_LINK |
 							  MODBUS_ERROR_RECOVERY_PROTOCOL);
+
+	// FIXME: create timeout params (sec, usec) in upsdrv_makevartable()
+	//	modbus_set_response_timeout(ctx, 2, 0);
+	uint32_t response_to_sec;
+	uint32_t response_to_usec;
+	modbus_get_response_timeout(ctx, &response_to_sec, &response_to_usec);
+	upsdebugx(2, "default response timeout: %i / %i", response_to_sec, response_to_usec);
+
+	modbus_set_response_timeout(ctx, 3, 0); //2, 500000);
+	modbus_get_response_timeout(ctx, &response_to_sec, &response_to_usec);
+	upsdebugx(2, "setting response timeout: %i / %i", response_to_sec, response_to_usec);
 
 	/* don't try to detect the device here */
 }
