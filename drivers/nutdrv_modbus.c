@@ -329,6 +329,13 @@ static int mb_read_value(modbus_t * ctx, int addr, int nb, uint16_t * dest)
 	int r = -1, i = 3;
 	while ((r == -1) && i > 0) {
 		upsdebugx(3, "%s: try %i/3", __func__, i);
+
+		/* Check if we are asked to stop */
+		if (exit_flag != 0) {
+			upsdebugx(1, "%s: aborting because exit_flag was set", __func__);
+			return -1;
+		}
+
 		r = modbus_read_registers(ctx, addr, nb, dest);
 		if (r == -1) {
 			upsdebugx(3, "%s: ERROR in modbus_read_registers(addr:%d, count:%d): %s (%s)",
@@ -353,18 +360,22 @@ void upsdrv_initinfo(void)
 	dstate_setinfo ("device.type", "power-meter");
 
 	/* Device type identifies the phasing type */
-	ret = modbus_read_registers(ctx, 4099, 1, tab_reg);
-	upsdebugx(3, "device type identifier: %i", tab_reg[0]);
-	switch(tab_reg[0]) {
-		case 1: /* three-phase full */
-		case 2: /* three-phase basic */
-			dstate_setinfo ("input_phases", "3");
-			break;
-		case 3: /* single-phase full */
-		case 4: /* single-phase basic */
-			dstate_setinfo ("input_phases", "1");
-			break;
+	ret = mb_read_value(ctx, 4099, 1, tab_reg);
+	if (ret != -1) {
+		upsdebugx(3, "device type identifier: %i", tab_reg[0]);
+		switch(tab_reg[0]) {
+			case 1: /* three-phase full */
+			case 2: /* three-phase basic */
+				dstate_setinfo ("input_phases", "3");
+				break;
+			case 3: /* single-phase full */
+			case 4: /* single-phase basic */
+				dstate_setinfo ("input_phases", "1");
+				break;
+		}
 	}
+	else
+		fatalx(EXIT_FAILURE, "No communication with device");
 
 	/* Firmware version */
 	memset(tab_reg, 0, sizeof(tab_reg));
@@ -373,7 +384,6 @@ void upsdrv_initinfo(void)
 	dstate_setinfo ("device.firmware","%i",(int) (tab_reg[0]));
 
 	//PID (Product identification)
-#if 0
 	char serial[15];
 	memset(serial, 0, sizeof(serial));
 	for (int i = 0; i < 7; i++) {
@@ -393,7 +403,7 @@ void upsdrv_initinfo(void)
 	upsdebugx(1, "Part number: %s", &serial[0]);
 	dstate_setinfo ("device.part", "%s", serial);
 	// FIXME: value published is borked with '4"'
-#endif
+
 	dstate_dataok();
 
 	/* 1/ Open the NUT Modbus definition file and load the data
@@ -587,18 +597,14 @@ void upsdrv_initups(void)
 			fatalx(EXIT_FAILURE, "Unable to create the libmodbus context");
 	}
 
-	/* Connect to the device */
-	if (modbus_connect(ctx) == -1) {
-		modbus_free(ctx);
-		fatalx(EXIT_FAILURE, "%s: Modbus TCP connection failed: %s", __func__, modbus_strerror(errno));
-	}
-	else
-		upsdebugx(1, "upsdrv_initups: successfully connected to Modbus device");
-
 	/* Set the target slave */
 	upsdebugx(2, "%s: Modbus slave_id: %s", __func__, slave_id);
 	if (strncmp(slave_id, "auto", 4)) {
-		modbus_set_slave(ctx, atoi(slave_id));
+		if (modbus_set_slave(ctx, atoi(slave_id)) == -1) {
+			fatalx(EXIT_FAILURE, "%s: Modbus set slave failed: %s", __func__, modbus_strerror(errno));
+		}
+		else
+			upsdebugx(1, "upsdrv_initups: successfully set Modbus slave");
 	}
 	else {
 		/* FIXME: implement slave discovery, as per nutscan_modbus
@@ -607,23 +613,30 @@ void upsdrv_initups(void)
 		fatalx(EXIT_FAILURE, "slave_id='auto' is not yet supported!");
 	}
 
+	/* Connect to the device */
+	if (modbus_connect(ctx) == -1) {
+		modbus_free(ctx);
+		fatalx(EXIT_FAILURE, "%s: Modbus connection failed: %s", __func__, modbus_strerror(errno));
+	}
+	else
+		upsdebugx(1, "upsdrv_initups: successfully connected to Modbus device");
 
 	/* Enable Modbus library debug info */
 	if (nut_debug_level >= 5)
 		modbus_set_debug(ctx, TRUE);
 
+	/* Seems to impact performances a looooot!!!
 	modbus_set_error_recovery(ctx,
 							  MODBUS_ERROR_RECOVERY_LINK |
-							  MODBUS_ERROR_RECOVERY_PROTOCOL);
+							  MODBUS_ERROR_RECOVERY_PROTOCOL); */
 
 	// FIXME: create timeout params (sec, usec) in upsdrv_makevartable()
-	//	modbus_set_response_timeout(ctx, 2, 0);
 	uint32_t response_to_sec;
 	uint32_t response_to_usec;
 	modbus_get_response_timeout(ctx, &response_to_sec, &response_to_usec);
 	upsdebugx(2, "default response timeout: %i / %i", response_to_sec, response_to_usec);
 
-	modbus_set_response_timeout(ctx, 3, 0); //2, 500000);
+	modbus_set_response_timeout(ctx, 3, 0);
 	modbus_get_response_timeout(ctx, &response_to_sec, &response_to_usec);
 	upsdebugx(2, "setting response timeout: %i / %i", response_to_sec, response_to_usec);
 
