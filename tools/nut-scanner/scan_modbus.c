@@ -169,13 +169,16 @@ static void scan_modbus_add_device(const char *address, int slave_id, char * tcp
 	nutscan_device_t * dev = NULL;
 	char str_slave_id[5];
 
-upsdebugx(1, "FIXME: adding device %s, %i", address, slave_id);
+	upsdebugx(1, "Adding Modbus TCP device %s, %i", address, slave_id);
+
 	dev = nutscan_new_device();
 	dev->type = TYPE_MODBUS;
 	dev->driver = strdup("nutdrv_modbus");
+	// dev->port = strdup(address); + tcp_port
 	dev->port = strdup(address);
 	sprintf(str_slave_id, "%i", slave_id);
 	nutscan_add_option_to_device(dev,"slave_id", str_slave_id);
+	/* FIXME: to be removed, in favor of ip:port notation */
 	if( tcp_port ) {
 		nutscan_add_option_to_device(dev,"tcp_port",tcp_port);
 	}
@@ -265,7 +268,8 @@ static void * nutscan_scan_modbus_device(void * port_arg)
 	modbus_t *ctx = NULL;
 	uint16_t tab_reg[64];
 	char *port_name = (char*)port_arg;
-	int max_slave_id = MAX_SLAVE_ID;
+	int max_slave_id = 10; // MAX_SLAVE_ID;
+	// Limit to 10 for now, for performance reasons
 	int slave_id = 1;
 	int ret = 0;
 
@@ -338,6 +342,11 @@ static void * nutscan_scan_modbus_device(void * port_arg)
 		ret = (*nut_modbus_read_registers)(ctx, 4099, 8, tab_reg);
 		// Note: whatever register requested, getting an answer means that
 		// there is a slave device listening! ;)
+
+		/*rc = modbus_report_slave_id(ctx, MODBUS_MAX_PDU_LENGTH, tab_bytes);
+		if (rc > 1) {
+			printf("Run Status Indicator: %s\n", tab_bytes[1] ? "ON" : "OFF");
+		} */
 
 		if (ret == -1) {
 			upsdebugx(2, "Error reading register 4099: %s", (*nut_modbus_strerror)(errno));
