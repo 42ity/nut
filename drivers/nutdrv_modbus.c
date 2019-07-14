@@ -46,6 +46,7 @@
 
 /* Variables */
 modbus_t *ctx = NULL;
+char *slave_id = NULL;
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
@@ -349,6 +350,7 @@ static int mb_read_value(modbus_t * ctx, int addr, int nb, uint16_t * dest)
 
 void upsdrv_initinfo(void)
 {
+	uint8_t tab_bytes[MODBUS_MAX_PDU_LENGTH];
 	uint16_t tab_reg[64];
 	int ret;
 
@@ -358,6 +360,31 @@ void upsdrv_initinfo(void)
 	dstate_setinfo ("device.mfr", "Eaton");
 	dstate_setinfo ("device.model", "PX Meter EMECMODB");
 	dstate_setinfo ("device.type", "power-meter");
+
+	/* Check for actual presence of a Modbus device */
+	ret = modbus_report_slave_id(ctx, MODBUS_MAX_PDU_LENGTH, tab_bytes);
+
+	if (ret > 0) {
+		dstate_setinfo ("device.slave_id", "%i", tab_bytes[0]);
+		upsdebugx(3, "device reported slave ID: %i", tab_bytes[0]);
+	}
+	else {
+		dstate_setinfo ("device.slave_id", "%s", slave_id);
+		upsdebugx(3, "device failed to report slave ID. Using the provided one (%s).", slave_id);
+	}
+
+	if (ret > 1) {
+		upsdebugx(3, "device is currently: %s", tab_bytes[1] ? "OL" : "OFF");
+		/* FIXME: move to device.status! */
+		status_init();
+		status_set(tab_bytes[1] ? "OL" : "OFF");
+		status_commit();
+	}
+
+	if (ret > 2) {
+		upsdebugx(3, "extra data present: %i chars", ret -2);
+		// FIXME: print payload
+	}
 
 	/* Device type identifies the phasing type */
 	ret = mb_read_value(ctx, 4099, 1, tab_reg);
@@ -567,7 +594,7 @@ void upsdrv_initups(void)
 {
 	upsdebugx(1, "%s", __func__);
 
-	char *slave_id = ((getval("slave_id")!=NULL)?getval("slave_id"):"auto");
+	slave_id = ((getval("slave_id")!=NULL)?getval("slave_id"):"auto");
 	/* FIXME: use upscli_splitaddr, keep for a transition period, then remove */
 	char *tcp_port = ((getval("tcp_port")!=NULL)?getval("tcp_port"):DEFAULT_MODBUS_TCP_PORT_STR);
 
@@ -601,7 +628,8 @@ void upsdrv_initups(void)
 	upsdebugx(2, "%s: Modbus slave_id: %s", __func__, slave_id);
 	if (strncmp(slave_id, "auto", 4)) {
 		if (modbus_set_slave(ctx, atoi(slave_id)) == -1) {
-			fatalx(EXIT_FAILURE, "%s: Modbus set slave failed: %s", __func__, modbus_strerror(errno));
+			fatalx(EXIT_FAILURE, "%s: Modbus set slave (%s) failed: %s",
+				__func__, slave_id, modbus_strerror(errno));
 		}
 		else
 			upsdebugx(1, "upsdrv_initups: successfully set Modbus slave");
