@@ -3,7 +3,7 @@
  *                G2 Marlin SW / MI / MO / MA
  *                G3 Shark SW / MI / MO / MA
  *
- *  Copyright (C) 2017
+ *  Copyright (C) 2017-2019
  * 		Arnaud Quette <ArnaudQuette@Eaton.com>
  *  Copyright (C) 2017
  * 		Jim Klimov <EvgenyKlimov@Eaton.com>
@@ -34,6 +34,9 @@
 
 #include "eaton-pdu-marlin-helpers.h"
 #include "dstate.h"
+/* Allow access to temperature_unit */
+#include "snmp-ups.h"
+
 
 /* Take string "unitsPresent" (ex: "0,3,4,5"), and count the amount
  * of "," separators+1 using an inline function */
@@ -51,4 +54,31 @@ long marlin_device_count_fun(const char *daisy_dev_list)
 		count ++;
 	}
 	return count;
+}
+
+/* Temperature unit consideration:
+ * only store the device unit, for converting to Celsius.
+ * Don't publish the device unit, since NUT will publish
+ * as Celsius in all cases */
+const char *eaton_sensor_temperature_unit_fun(long snmp_value)
+{
+	switch (snmp_value) {
+		case 0:
+			/* store the value, for temperature processing */
+			temperature_unit = TEMPERATURE_KELVIN;
+			break;
+		case 1:
+			/* store the value, for temperature processing */
+			temperature_unit = TEMPERATURE_CELSIUS;
+			break;
+		case 2:
+			/* store the value, for temperature processing */
+			temperature_unit = TEMPERATURE_FAHRENHEIT;
+			break;
+		default:
+			/* store the value, for temperature processing */
+			temperature_unit = TEMPERATURE_UNKNOWN;
+			break;
+	}
+	return "celsius";
 }
