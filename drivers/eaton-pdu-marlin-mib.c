@@ -641,7 +641,7 @@ static snmp_info_t eaton_marlin_mib[] = {
 		NULL, SU_FLAG_SEMI_STATIC | SU_FLAG_OK | SU_TYPE_DAISY_1, NULL /*, NULL */ },
 	/* inputPowerCapacity.0.1 = INTEGER: 2300 */
 	/* FIXME: RFC on key name is needed when backporting to NUT upstream */
-	{ "input.realpower.nominal", 0, 1.0, ".1.3.6.1.4.1.534.6.6.7.3.5.1.9.%i.1",
+	{ "input.power.nominal", 0, 1.0, ".1.3.6.1.4.1.534.6.6.7.3.5.1.9.%i.1",
 		NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL /*, NULL */ },
 
 	/* Ambient collection */
