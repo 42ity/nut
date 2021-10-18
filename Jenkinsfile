@@ -524,34 +524,28 @@ OUT="`git status -s`" && [ -z "\$OUT" ] \\
                     }
 
                     stages {
-                        stage('Compile') {
+                        stage('Compile Coverity') {
                             steps {
                                 dir("tmp/build-coverity") {
                                     deleteDir()
                                 }
                                 dir("tmp/build-coverity") {
                                     unstash 'prepped'
-                                    // TODO: Use coverity steps from lib below
-                                    sh '''
-                                        # ./autogen.sh
-                                        ./configure
-                                        make clean
-                                        coverity.sh --build $PWD
-                                        '''
+                                }
+                                script {
+                                    // Autogen is currently part of "prepped" archive
+                                    //compile.autogen("tmp/build-coverity")
+                                    compile.configure("tmp/build-coverity", "--enable-Werror=yes --with-docs=no")
+                                    compile.make("tmp/build-coverity", "clean")
+                                    coverity.compile("tmp/build-coverity")
                                 }
                             }
                         }
 
-                        stage('Analyse') {
+                        stage('Analyse Coverity') {
                             steps {
-                                dir("tmp/build-coverity") {
-                                    // TODO: Use coverity steps from lib below
-                                    sh '''
-                                        coverity.sh --analyse $PWD
-                                       '''
-                                    sh '''
-                                       coverity-warning-parser.py $PWD $PWD
-                                       '''
+                                script {
+                                    coverity.analyse("tmp/build-coverity")
                                 }
                             }
                         }
@@ -562,12 +556,11 @@ OUT="`git status -s`" && [ -z "\$OUT" ] \\
                     // TODO: Use coverity steps from lib below for the post{}
                     post {
                         always {
-                            recordIssues (
-                                enabledForFailure: true,
-                                aggregatingResults: true,
-                                qualityGates: [[threshold: 1, type: 'DELTA_ERROR', fail: true]],
-                                tools: [issues(name: "Coverity Analysis",pattern: '**/tmp_cov_dir/output/*.errors.json')]
-                            )
+                            script {
+                                dir("tmp/build-coverity") {
+                                    coverity.postAnalysis()
+                                }
+                            }
                         }
                     }
                 } // Analyze with Coverity
@@ -584,7 +577,7 @@ OUT="`git status -s`" && [ -z "\$OUT" ] \\
             }
         }
 
-        stage ('Upload results'){
+        stage ('Upload results') {
             parallel {
 
                 stage('Commit Coverity') {
@@ -603,14 +596,13 @@ OUT="`git status -s`" && [ -z "\$OUT" ] \\
                     }
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            // TODO: Use coverity steps from lib below
-                            sh '''
-                                COV_GIT_URL=$(git remote -v | egrep '^origin' | awk '{print $2}' | head -1)
-                                COV_GIT_PROJECT_NAME=$(basename ${COV_GIT_URL} | sed 's#.git##g')
-                                COV_GIT_BRANCH=$(echo ${BRANCH_NAME} | sed 's#/#_#g')
-                                COV_GIT_COMMIT_ID=$(git rev-parse --short HEAD)
-                                coverity.sh --commit $PWD "${COV_GIT_PROJECT_NAME}" "${COV_GIT_BRANCH}" "${COV_GIT_COMMIT_ID}"
-                            '''
+                                script {
+                                    /* Many components upload in 2-5 minutes; but some
+                                     * seem to require complex processing on server side */
+                                    //coverity.commitResults("tmp/build-coverity", parameters.coverityUploadTimeoutLen, parameters.coverityUploadTimeoutUnit)
+                                    coverity.commitResults("tmp/build-coverity")
+                                    manager.addShortText("Coverity upload completed")
+                                }
                         }
                     }
                     post {
