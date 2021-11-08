@@ -245,7 +245,6 @@ static void show_usage()
 #else
         printf("  -x, --privProtocol <privacy protocol>: Set the privacy protocol (DES or AES) used for encrypted SNMPv3 messages (default=DES)\n");
 #endif
-        printf("  -x, --privProtocol <privacy protocol>: Set the privacy protocol (DES, AES, AES192 or AES256) used for encrypted SNMPv3 messages (default=DES)\n");
 		printf("  -X, --privPassword <privacy pass phrase>: Set the privacy pass phrase used for encrypted SNMPv3 messages (mandatory if you set secLevel to authPriv)\n");
 	}
 

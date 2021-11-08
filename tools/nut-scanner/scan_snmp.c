@@ -368,7 +368,7 @@ int nutscan_load_snmp_library(const char *libname_path)
 	if ((dl_error = lt_dlerror()) != NULL) {
 		goto err;
 	}
-
+#if NETSNMP_DRAFT_BLUMENTHAL_AES_04
     *(void **) (&nut_usmAES192PrivProtocol) = lt_dlsym(dl_handle,
                         "usmAES192PrivProtocol");
     if ((dl_error = lt_dlerror()) != NULL) {
@@ -380,6 +380,7 @@ int nutscan_load_snmp_library(const char *libname_path)
     if ((dl_error = lt_dlerror()) != NULL) {
         goto err;
     }
+#endif
 
     *(void **) (&nut_usmHMAC192SHA256AuthProtocol) = lt_dlsym(dl_handle,
                         "usmHMAC192SHA256AuthProtocol");
@@ -705,7 +706,7 @@ static int init_session(struct snmp_session * snmp_sess, nutscan_snmp_t * sec)
             else {
 				if (strcmp(sec->authProtocol, "MD5") != 0) {
 					fprintf(stderr,
-						"Bad SNMPv3 authProtocol: %s",
+                        "Bad SNMPv3 authProtocol: %s\n",
 						sec->authProtocol);
 					return 0;
 				}
