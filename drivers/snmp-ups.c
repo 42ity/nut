@@ -804,6 +804,7 @@ void nut_snmp_init(const char *type, const char *hostname)
 			g_snmp_sess.securityPrivProto = usmAESPrivProtocol;
 			g_snmp_sess.securityPrivProtoLen = NUT_securityPrivProtoLen;
         }
+#if NETSNMP_DRAFT_BLUMENTHAL_AES_04
         else if (strcmp(privProtocol, "AES192") == 0) {
             g_snmp_sess.securityPrivProto = usmAES192PrivProtocol;
             g_snmp_sess.securityPrivProtoLen = (sizeof(usmAES192PrivProtocol)/sizeof(oid));
@@ -812,6 +813,7 @@ void nut_snmp_init(const char *type, const char *hostname)
             g_snmp_sess.securityPrivProto = usmAES256PrivProtocol;
             g_snmp_sess.securityPrivProtoLen = (sizeof(usmAES256PrivProtocol)/sizeof(oid));
         }
+#endif
 		else
 			fatalx(EXIT_FAILURE, "Bad SNMPv3 privProtocol: %s", privProtocol);
 

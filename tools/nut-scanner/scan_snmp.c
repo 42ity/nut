@@ -745,6 +745,7 @@ static int init_session(struct snmp_session * snmp_sess, nutscan_snmp_t * sec)
 					sizeof(usmAESPrivProtocol)/
 					sizeof(oid);
             }
+#if NETSNMP_DRAFT_BLUMENTHAL_AES_04
             else if (strcmp(sec->privProtocol, "AES192") == 0) {
                 snmp_sess->securityPrivProto = nut_usmAES192PrivProtocol;
                 snmp_sess->securityPrivProtoLen =
@@ -757,6 +758,7 @@ static int init_session(struct snmp_session * snmp_sess, nutscan_snmp_t * sec)
                     sizeof(usmAES256PrivProtocol)/
                     sizeof(oid);
             }
+#endif
             else {
 				if (strcmp(sec->privProtocol, "DES") != 0) {
 					fprintf(stderr,
