@@ -9,6 +9,11 @@ libparseconf_la_SOURCES = parseconf.c
 # 'dist', and is only required for actual build, in which case
 # BUILT_SOURCES (in ../include) will ensure nut_version.h will
 # be built before anything else
+common.c: $(top_builddir)/include/nut_version.h
+
+$(top_builddir)/include/nut_version.h:
+	@cd $(@D) && $(MAKE) $(AM_MAKEFLAGS) $(@F)
+
 libcommon_la_SOURCES = common.c state.c str.c upsconf.c
 libcommonclient_la_SOURCES = common.c state.c str.c
 # ensure inclusion of local implementation of missing systems functions
@@ -43,6 +48,11 @@ if WITH_DMF
 # other libraries we build (typically consumed with libcommonstr.la)
   libnutdmfsnmp_la_LIBADD = $(LIBNETSNMP_LIBS)
 
+if WITH_LIBXML2
+  libnutdmfsnmp_la_LIBADD += $(LIBXML2_LIBS)
+  libnutdmfsnmp_la_CFLAGS += $(LIBXML2_CFLAGS)
+endif
+
 if WITH_LIBLTDL
 # NOTE: the C macro WITH_LIBLTDL=1 will probably be defined by config.h
 # and unlike the DMF macros, we do not care much about this case.
@@ -75,3 +85,10 @@ endif
 #endif
 endif
 endif
+
+MAINTAINERCLEANFILES = Makefile.in .dirstamp
+
+# NOTE: Do not clean ".deps" in SUBDIRS of the main project,
+# the root Makefile.am takes care of that!
+#clean-local:
+#	rm -rf $(builddir)/.deps
