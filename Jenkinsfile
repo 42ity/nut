@@ -9,8 +9,10 @@ parameters.enableMemCheck = false
 //parameters.enableDistCheck = false
 parameters.enableInstall = false
 parameters.enableCoverity = false
-//parameters.requireGoodGitignore = false
+parameters.requireGoodGitignore = false
 parameters.enableWerror = "no"
+// Don't deploy to OBS yet!
+//parameters.enableDeploy = false
 
 etn_ipm2_build_and_tests_pipeline_zproject(parameters)
 
