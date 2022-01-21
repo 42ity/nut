@@ -10,6 +10,7 @@ parameters.enableMemCheck = false
 parameters.enableInstall = false
 parameters.enableCoverity = false
 //parameters.requireGoodGitignore = false
+parameters.enableWerror = "no"
 
 etn_ipm2_build_and_tests_pipeline_zproject(parameters)
 
