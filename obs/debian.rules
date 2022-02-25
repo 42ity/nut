@@ -81,7 +81,7 @@ endif
 DEB_CONFIGURE_EXTRA_FLAGS+=--with-doc=man=dist-auto
 
 configure: configure.ac
-	(cd tools; python nut-snmpinfo.py)
+	#(cd tools; python nut-snmpinfo.py)
 	sh autogen.sh
 
 pre-build:: debian/compat configure
