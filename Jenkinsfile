@@ -106,7 +106,6 @@ pipeline {
         // record that a particular commit is being processed, but the explicit ways
         // might work better. In either case it honors SCM settings like refrepo if
         // set up in the Pipeline or MultiBranchPipeline job.
-        skipDefaultCheckout()
     }
 // Note: your Jenkins setup may benefit from similar setup on side of agents:
 //        PATH="/usr/lib64/ccache:/usr/lib/ccache:/usr/bin:/bin:${PATH}"
@@ -121,15 +120,6 @@ pipeline {
                             deleteDir()
                         }
                         sh 'rm -f ccache.log cppcheck.xml'
-                    }
-        }
-
-        stage ('git') {
-                    steps {
-                        retry(3) {
-                            checkout scm
-                        }
-                        milestone ordinal: 30, label: "${env.JOB_NAME}@${env.BRANCH_NAME}"
                     }
         }
 
