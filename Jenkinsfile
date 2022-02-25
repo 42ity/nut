@@ -622,6 +622,7 @@ OUT="`git status -s`" && [ -z "\$OUT" ] \\
                     steps {
                         script {
                             deploy.pushToOBS()
+                            manager.addShortText("Pushed to OBS")
                         }
                     }
                 }
