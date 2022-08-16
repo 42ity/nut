@@ -71,7 +71,7 @@ pipeline {
             description: 'Require that there are no files not discovered changed/untracked via .gitignore after builds and tests?',
             name: 'CI_REQUIRE_GOOD_GITIGNORE')
         booleanParam (
-            defaultValue: true,
+            defaultValue: false,
             description: 'Run code analysis (applies for certain branches)?',
             name: 'DO_COVERITY')
         string (
