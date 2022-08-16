@@ -2,7 +2,11 @@
 
 pipeline {
     agent {
-        label infra.getAgentLabels()
+        docker {
+            label 'docker-dev-1'
+            image infra.getDockerAgentImage()
+            args '--entrypoint=/startup.sh --oom-score-adj=100 -v /opt/cov:/opt/cov:ro -v /etc/ssh/id_rsa_git-proxy-cache:/etc/ssh/id_rsa_git-proxy-cache:ro -v /etc/ssh/ssh_config:/etc/ssh/ssh_config:ro -v /etc/gitconfig:/etc/gitconfig:ro'
+        }
     }
     parameters {
         // Use DEFAULT_DEPLOY_BRANCH_PATTERN and DEFAULT_DEPLOY_JOB_NAME if
@@ -67,7 +71,7 @@ pipeline {
             description: 'Require that there are no files not discovered changed/untracked via .gitignore after builds and tests?',
             name: 'CI_REQUIRE_GOOD_GITIGNORE')
         booleanParam (
-            defaultValue: true,
+            defaultValue: false,
             description: 'Run code analysis (applies for certain branches)?',
             name: 'DO_COVERITY')
         string (
