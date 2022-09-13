@@ -344,7 +344,7 @@ void upsdrv_shutdown(void)
 
 	/* set shutdown and autostart delay */
 	set_delays();
-	
+
 	/* Try to shutdown with delay */
 	if (su_instcmd("shutdown.return", NULL) == STAT_INSTCMD_HANDLED) {
 		/* Shutdown successful */
@@ -2256,6 +2256,7 @@ static snmp_info_t *instantiate_info(snmp_info_t *info_template, snmp_info_t *ne
 	new_instance->info_flags = info_template->info_flags;
 	new_instance->info_len = info_template->info_len;
 	/* FIXME: check if we need to adapt this one... */
+	/* FIXME: dfl *must* be duplicated as for OID */
 	new_instance->dfl = info_template->dfl;
 	new_instance->flags = info_template->flags;
 	new_instance->oid2info = info_template->oid2info;
@@ -2277,6 +2278,8 @@ static void free_info(snmp_info_t *su_info_p)
 
 	if (su_info_p->OID != NULL)
 		free ((char *)su_info_p->OID);
+
+	//FIXME: memleak, free su_info_p->dfl?
 
 	free (su_info_p);
 }
@@ -2618,7 +2621,7 @@ static bool_t process_template(int mode, const char* type, snmp_info_t *su_info_
 			/* check if default value is also a template */
 			if ((cur_info_p.dfl != NULL) &&
 				(strstr(su_info_p->dfl, "%i") != NULL)) {
-				cur_info_p.dfl = (char *)xmalloc(SU_INFOSIZE);
+				cur_info_p.dfl = (char *)xmalloc(SU_INFOSIZE); //FIXME: memleak?
 				snprintf((char *)cur_info_p.dfl, SU_INFOSIZE, su_info_p->dfl, cur_nut_index);
 			}
 
@@ -2676,12 +2679,19 @@ static bool_t process_template(int mode, const char* type, snmp_info_t *su_info_
 			/* set back the flag */
 			su_info_p->flags = cur_info_p.flags;
 		}
-		free((char*)cur_info_p.info_type);
-		if (cur_info_p.OID != NULL)
+		if (cur_info_p.info_type != NULL) {
+			free((char*)cur_info_p.info_type);
+			cur_info_p.info_type = NULL;
+		}
+		if (cur_info_p.OID != NULL) {
 			free((char*)cur_info_p.OID);
+			cur_info_p.OID = NULL;
+		}
 		if ((cur_info_p.dfl != NULL) &&
-			(strstr(su_info_p->dfl, "%i") != NULL))
+			(strstr(su_info_p->dfl, "%i") != NULL)) {
 			free((char*)cur_info_p.dfl);
+			cur_info_p.dfl = NULL;
+		}
 	}
 	else {
 		upsdebugx(1, "No %s present, discarding template definition...", type);
@@ -3814,6 +3824,7 @@ static int su_setOID(int mode, const char *varname, const char *val)
 		if ((su_info_p->dfl != NULL) &&
 			(strstr(tmp_info_p->dfl, "%i") != NULL))
 		{
+                        //FIXME memleak on su_info_p->dfl?
 			su_info_p->dfl = (char *)xmalloc(SU_INFOSIZE);
 #ifdef HAVE_PRAGMAS_FOR_GCC_DIAGNOSTIC_IGNORED_FORMAT_NONLITERAL
 #pragma GCC diagnostic push
