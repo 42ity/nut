@@ -4,7 +4,7 @@
 
 //We want to manage push to obs from global parameters
 import params.CmakePipelineParams
-CmakePipelineParams parameters = new CmakePipelineParams()
+CmakePipelineParams cmakeParameters = new CmakePipelineParams()
 
 parameters.enableDebugBuild = false
 pipeline {
@@ -542,7 +542,7 @@ OUT="`git status -s`" && [ -z "\$OUT" ] \\
                 stage ('Push to OBS') {
                     when {
                         allOf {
-                            expression { return parameters.enableDeploy }
+                            expression { return cmakeParameters.enableDeploy }
                                 anyOf {
                                     branch 'master'
                                     branch 'main'
