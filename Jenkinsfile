@@ -6,7 +6,6 @@
 import params.CmakePipelineParams
 CmakePipelineParams cmakeParameters = new CmakePipelineParams()
 
-parameters.enableDebugBuild = false
 pipeline {
     agent {
         docker {
