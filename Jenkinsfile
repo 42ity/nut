@@ -1,5 +1,12 @@
+#!/usr/bin/env groovy
+
 @Library('etn-ipm2-jenkins') _
 
+//We want to manage push to obs from global parameters
+import params.CmakePipelineParams
+CmakePipelineParams parameters = new CmakePipelineParams()
+
+parameters.enableDebugBuild = false
 pipeline {
     agent {
         docker {
@@ -532,7 +539,21 @@ OUT="`git status -s`" && [ -z "\$OUT" ] \\
                     }
                 } // Commit Coverity
 
-                stage ('deploy') {
+                stage ('Push to OBS') {
+                    when {
+                        allOf {
+                            expression { return parameters.enableDeploy }
+                                anyOf {
+                                    branch 'master'
+                                    branch 'main'
+                                    branch "release/*"
+                                    branch "featureimage/*"
+                                    branch 'FTY'
+                                    branch '*-FTY-master'
+                                    branch '*-FTY'
+                            }
+                        }
+                    }
                     steps {
                         script {
                             deploy.pushToOBS()
