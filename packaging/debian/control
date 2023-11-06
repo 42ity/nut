@@ -33,7 +33,6 @@ Standards-Version: 3.9.5
 Homepage: http://www.networkupstools.org/
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/nut.git;a=summary
 Vcs-Git: git://anonscm.debian.org/collab-maint/nut.git
-X-Python-Version: >= 2.5
 XS-Testsuite: autopkgtest
 
 Package: nut
@@ -331,7 +330,7 @@ Description: network UPS tools - development files for stub
 Package: python-nut
 Section: python
 Architecture: all
-Depends: ${python:Depends}, ${misc:Depends}
+Depends: ${python3:Depends}, ${misc:Depends}
 Description: network UPS tools - Python bindings for NUT server
  Network UPS Tools (NUT) is a client/server monitoring system that
  allows computers to share uninterruptible power supply (UPS) and
@@ -343,7 +342,7 @@ Description: network UPS tools - Python bindings for NUT server
 
 Package: nut-monitor
 Architecture: all
-Depends: ${python:Depends},
+Depends: ${python3:Depends},
          ${misc:Depends},
          python-gobject,
          python-gtk2,
