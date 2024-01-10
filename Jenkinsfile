@@ -109,7 +109,7 @@ pipeline {
     stages {
         stage ('pre-clean') {
                     steps {
-                        milestone ordinal: 20, label: "${env.JOB_NAME}@${env.BRANCH_NAME}"
+                        //milestone ordinal: 20, label: "${env.JOB_NAME}@${env.BRANCH_NAME}"
                         dir("tmp") {
                             sh 'if [ -s Makefile ]; then make -k distclean || true ; fi'
                             sh 'chmod -R u+w .'
@@ -123,7 +123,7 @@ pipeline {
                     steps {
                         sh './autogen.sh'
                         stash (name: 'prepped', includes: '**/*', excludes: '**/cppcheck.xml')
-                        milestone ordinal: 40, label: "${env.JOB_NAME}@${env.BRANCH_NAME}"
+                        //milestone ordinal: 40, label: "${env.JOB_NAME}@${env.BRANCH_NAME}"
                     }
         }
 
@@ -491,7 +491,7 @@ OUT="`git status -s`" && [ -z "\$OUT" ] \\
                 script {
                     manager.addShortText("Build, analysis and tests passed okay")
                 }
-                milestone ordinal: 100, label: "${env.JOB_NAME}@${env.BRANCH_NAME}"
+                //milestone ordinal: 100, label: "${env.JOB_NAME}@${env.BRANCH_NAME}"
             }
         }
 
