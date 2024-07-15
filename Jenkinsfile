@@ -5,7 +5,7 @@ pipeline {
         docker {
             label 'docker-dev-1'
             image infra.getDockerAgentImage()
-            args '--entrypoint=/startup.sh --oom-score-adj=100 -v /opt/cov:/opt/cov:ro -v /etc/ssh/id_rsa_git-proxy-cache:/etc/ssh/id_rsa_git-proxy-cache:ro -v /etc/ssh/ssh_config:/etc/ssh/ssh_config:ro -v /etc/gitconfig:/etc/gitconfig:ro'
+            args '--oom-score-adj=100 -v /opt/cov:/opt/cov:ro -v /etc/ssh/id_rsa_git-proxy-cache:/etc/ssh/id_rsa_git-proxy-cache:ro -v /etc/ssh/ssh_config:/etc/ssh/ssh_config:ro -v /etc/gitconfig:/etc/gitconfig:ro'
         }
     }
     parameters {
@@ -86,9 +86,6 @@ pipeline {
             defaultValue: true,
             description: 'When using temporary subdirs in build/test workspaces, wipe them after the whole job is done unsuccessfully (failed)? Note this would not allow postmortems on CI server, but would conserve its disk space.',
             name: 'DO_CLEANUP_AFTER_FAILED_JOB')
-    }
-    triggers {
-        pollSCM 'H/5 * * * *'
     }
 
     // Jenkins tends to reschedule jobs that have not yet completed if they took
