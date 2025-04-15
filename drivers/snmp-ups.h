@@ -31,7 +31,6 @@
  */
 
 /* TODO list:
-- add syscontact/location (to all mib.h or centralized?)
 - complete shutdown
 - add enum values to OIDs.
 - optimize network flow by:
@@ -126,6 +125,12 @@
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
 
+#ifndef ONE_SEC
+/* This macro name disappeared from net-snmp sources and headers
+ * after v5.9 tag, and was replaced by explicit expression below: */
+# define ONE_SEC (1000L * 1000L)
+#endif
+
 /* Force numeric OIDs by disabling MIB loading */
 #ifdef DISABLE_MIB_LOADING
 # undef DISABLE_MIB_LOADING
@@ -163,11 +168,15 @@ typedef int bool_t;
  * this macro to a specific value while building the codebase and see
  * what happens under different conditions ;)
  */
-# if WITH_DMFMIB
+# if (defined WITH_DMFMIB) && (WITH_DMFMIB != 0)
 #  define WITH_SNMP_LKP_FUN 0
 # else
 #  define WITH_SNMP_LKP_FUN 1
 # endif
+#endif
+
+#ifndef WITH_SNMP_LKP_FUN_DUMMY
+# define WITH_SNMP_LKP_FUN_DUMMY 0
 #endif
 
 /* for lookup between OID values and INFO_ value */
@@ -185,7 +194,8 @@ typedef struct {
  * get away by serving fallback static mapping tables that get into
  * generated DMF, while the "nuf_s2l", "fun_s2l" and "nuf_vp2s" types
  * are added for completeness but are not handled and do not have
- * real consumers in existing NUT codebase (static mib2nut tables).
+ * real consumers in existing NUT codebase (static mib2nut tables
+ * in *-mib.c files).
  * Related to su_find_infoval() (long* => string), su_find_valinfo()
  * (string => long) and su_find_strval() (char* => string) routines
  * defined below.
@@ -194,7 +204,7 @@ typedef struct {
 	long (*nuf_s2l)(const char *nut_value);     /* optional NUT to SNMP mapping function, converting a NUT string into SNMP numeric data */
 	long (*fun_s2l)(const char *snmp_value);    /* optional SNMP to NUT mapping function, converting SNMP string data into a NUT number */
 	const char *(*nuf_vp2s)(void *nut_value);   /* optional NUT to SNMP mapping function, converting a pointer to NUT value (e.g. numeric or string) into SNMP string data */
-#endif
+#endif /* WITH_SNMP_LKP_FUN */
 } info_lkp_t;
 
 /* Structure containing info about one item that can be requested
@@ -255,8 +265,8 @@ typedef struct {
 #define SU_CMD_OFFSET		(1UL << 8)	/* Add +1 to the OID index */
 
 #define SU_FLAG_SEMI_STATIC	(1UL << 9)	/* Refresh this entry once in several walks
-						 				 * (for R/W values user can set on device,
-						 				 * like descriptions or contacts) */
+                                      	 * (for R/W values user can set on device,
+                                      	 * like descriptions or contacts) */
 
 /* Notes on outlet templates usage:
  * - outlet.count MUST exist and MUST be declared before any outlet template
@@ -299,11 +309,11 @@ typedef struct {
  * templates, such as outlets / outlets groups, which already have a format
  * string specifier */
 /* "flags" bits 21..23 (and 24 reserved for DMF) */
-#define SU_TYPE_DAISY_1		(1UL << 21)	/* Daisychain index is the 1st specifier */
-#define SU_TYPE_DAISY_2		(1UL << 22)	/* Daisychain index is the 2nd specifier */
-#define SU_TYPE_DAISY(t)	((t)->flags & (11UL << 21))	/* Mask the 3 SU_TYPE_DAISY_* but not SU_DAISY */
+#define SU_TYPE_DAISY_1		(1UL << 21)	/* Daisychain index is the 1st %i specifier in a template with more than one */
+#define SU_TYPE_DAISY_2		(1UL << 22)	/* Daisychain index is the 2nd %i specifier in a template with more than one */
+#define SU_TYPE_DAISY(t)	((t)->flags & (11UL << 21))	/* Mask the SU_TYPE_DAISY_{1,2,MASTER_ONLY} but not SU_DAISY */
 #define SU_DAISY			(1UL << 23)	/* Daisychain template definition - set at run-time for devices with detected "device.count" over 1 */
-/* NOTE: Previously SU_DAISY had same bit-flag value as SU_TYPE_DAISY_2*/
+/* NOTE: Previously SU_DAISY had same bit-flag value as SU_TYPE_DAISY_2 */
 #define SU_TYPE_DAISY_MASTER_ONLY	(1UL << 24)	/* Only valid for daisychain master (device.1) */
 
 /* Free slot: (1UL << 25) */

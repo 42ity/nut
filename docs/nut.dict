@@ -1,5 +1,6 @@
-personal_ws-1.1 en 2918 utf-8
+personal_ws-1.1 en 3008 utf-8
 AAS
+ABI
 ACFAIL
 ACFREQ
 ACK
@@ -10,6 +11,7 @@ ACrms
 ADDR
 ADDRCONFIG
 ADDRINFO
+ADELSYSTEM
 ADK
 ADKK
 AEC
@@ -35,6 +37,8 @@ ATT
 ATTRS
 ATX
 ATs
+AUTOCOMMIT
+AUTOPUSH
 AVL
 AVR
 AVRLCD
@@ -56,7 +60,6 @@ AlmCPol
 AlmEnbl
 Amplon
 Ampère
-Amplon
 Andreas
 Andreassen
 Andrzej
@@ -154,6 +157,7 @@ ByPass
 CA's
 CABAC
 CAs
+CBI
 CBLimit
 CCC
 CCCC
@@ -238,11 +242,13 @@ DEBUGOUT
 DELCMD
 DELENUM
 DELINFO
+DELPHYS
 DELRANGE
 DES
 DESTDIR
 DF
 DHEA
+DIGYS
 DISCHRG
 DMF
 DMFs
@@ -274,6 +280,7 @@ DiSplay
 Diehl
 Dietze
 Digitus
+Digys
 Dimitris
 Dly
 Dmitry
@@ -288,6 +295,7 @@ EG
 EL
 ELCD
 EMI
+EMP
 EMPDT
 ENDFOR
 ENV
@@ -452,6 +460,7 @@ ID's
 IDEN
 IDentifiers
 IFBETWEEN
+IFF
 IFSUPP
 IGN
 IMG
@@ -491,10 +500,12 @@ Invter
 IoT
 Ioannou
 JAWAN
+JBUS
 JBus
 JKL
 JRE
 JSON
+JVM
 JW
 Jageson
 Jarosch
@@ -559,8 +570,10 @@ LINEV
 LISTINSTCMD
 LISTRW
 LISTVARS
+LLNC
 LOADPCT
 LOCKFN
+LOCKNAME
 LOTRANS
 LUA
 LVM
@@ -574,8 +587,10 @@ Laventhol
 Legrand
 Lepple
 Levente
+LibGD
 LibLTDL
 LibNEON
+LibUSB
 LineA
 LineB
 LineSens
@@ -600,6 +615,7 @@ MAXPARMAKES
 MBATTCHG
 MCOL
 MCU
+MEC
 MEGATAEC
 MH
 MIBs
@@ -617,6 +633,7 @@ MQ
 MSI
 MSII
 MSIII
+MX
 MacKenzie's
 MacOS
 Maccelari
@@ -661,6 +678,7 @@ MiniGuard
 Minislot
 Moar
 Modbus
+ModemManager
 MonAMI
 MonUPS
 Monett
@@ -696,6 +714,7 @@ NOAUTH
 NOCOMM
 NOCOMMWARNTIME
 NOCONF
+NOGET
 NOMBATTV
 NOMINV
 NOMOUTV
@@ -752,8 +771,10 @@ OMNIVSINT
 ONF
 ONV
 OOM
+OSABI
 OSF
 OSs
+OUTDIR
 OUTPUTV
 OUTVOLT
 OV
@@ -791,6 +812,7 @@ PBTn
 PBTnn
 PC
 PC's
+PCI
 PDC
 PDUs
 PDX
@@ -821,6 +843,7 @@ PPPPPPPPPP
 PR
 PR'ed
 PROGS
+PROTVER
 PRs
 PSA
 PSD
@@ -835,6 +858,7 @@ PULS
 PV
 PWLv
 PWR
+PXG
 PaaS
 Pac
 Parisi
@@ -896,7 +920,9 @@ PresentStatus
 Priv
 Procomm
 ProductID
+Proxmox
 Prynych
+Pulizzi
 PwrOut
 PyGTK
 PyNUT
@@ -935,8 +961,10 @@ RDNT
 RDWR
 README
 REDi
+REFREPO
 REPLBATT
 REQSSL
+RESPIN
 RETPCT
 RK
 RMCARD
@@ -1076,6 +1104,7 @@ SendEnv
 Senoidal
 Sep
 Sequentializing
+SerialNumber
 Serv
 Shara
 Shaul
@@ -1142,6 +1171,7 @@ TEMPC
 TEMPF
 TESTEDFILE
 TESTEDINDEX
+TGS
 TIMELEFT
 TIOCM
 TIOCMBIC
@@ -1157,6 +1187,7 @@ TST
 TT
 TTT
 TXF
+TXG
 TXV
 TXVxx
 TapSwDly
@@ -1199,6 +1230,7 @@ UID
 UIDA
 UINT
 UNKCOMMAND
+UNSTASH
 UNV
 UPGUARDS
 UPM
@@ -1215,6 +1247,7 @@ UPSTEMP
 UPScode
 UPSes
 UPSilon
+UPSmart
 UPSmon
 UPSonic
 UPSs
@@ -1246,6 +1279,7 @@ VER
 VERFW
 VFI
 VIB
+VM
 VMIN
 VMM
 VMware
@@ -1345,6 +1379,7 @@ addenum
 addinfo
 addr
 addrange
+adelsystem
 adkorte
 adm
 admin's
@@ -1401,6 +1436,7 @@ ascii
 asciidoc
 asem
 aspell
+ast
 async
 atcl
 ats
@@ -1507,6 +1543,7 @@ buflen
 bugfix
 bugfixes
 buildbots
+builddir
 bullseye
 busybox
 bv
@@ -1516,6 +1553,7 @@ cablepower
 calloc
 cb
 cbe
+cbi
 cbl
 cblimit
 ccache
@@ -1610,6 +1648,7 @@ coverity
 cp
 cpp
 cppcheck
+cppnit
 cppunit
 cpqpower
 cpsups
@@ -1623,6 +1662,9 @@ crw
 csh
 cshdelay
 css
+cstdint
+ctime
+ctrl
 cts
 ctypes
 cua
@@ -1656,6 +1698,7 @@ decrement
 decrypt
 dedb
 dedup
+deduplication
 defun
 dep
 dephasing
@@ -1674,9 +1717,11 @@ devscan
 dfl
 dhcp
 dialout
+difftool
 dipsw
 dir
 dirpath
+discardable
 disp
 distcheck
 distclean
@@ -1685,6 +1730,7 @@ distros
 dl
 dll
 dlopen
+dmake
 dmesg
 dmf
 dmfdir
@@ -1706,6 +1752,7 @@ dq
 driverexec
 drivername
 driverpath
+drivertool
 drv
 drvctl
 drvpath
@@ -1842,6 +1889,7 @@ getent
 getenv
 getopt
 getvar
+gitcache
 github
 gitignore
 gitk
@@ -1856,6 +1904,7 @@ gpg
 graphviz
 groupadd
 groupname
+gtk
 guardpend
 guardpstart
 guestimate
@@ -1868,12 +1917,15 @@ hal
 hardcoded
 hasFeature
 hb
+hcd
 hcl
 hg
 hh
 hibernate's
 hiddev
 hidparser
+hidraw
+hidtypes
 hidups
 highbattery
 highfrequency
@@ -1892,6 +1944,8 @@ httpd
 https
 huawei
 hunnox
+hypervisor
+hypervisors
 iBox
 iDowell
 iManufacturer
@@ -1954,6 +2008,7 @@ io
 ioLogik
 ioLogikE
 ioLogikR
+iocage
 iostream
 ip
 ipE
@@ -1971,6 +2026,7 @@ ivtscd
 jNUT
 jNut
 jNutWebAPI
+jbus
 jdk
 jenkins
 jessie
@@ -2023,6 +2079,7 @@ libneon
 libnss
 libnut
 libnutclient
+libnutclientsub
 libnutconfig
 libnutscan
 libpng
@@ -2089,6 +2146,7 @@ lxcbr
 lxccontainer
 lxml
 lxyz
+lz
 mA
 mDNS
 mS
@@ -2122,6 +2180,7 @@ mecer
 megatec
 memset
 merchantability
+mergetool
 metadata
 metasys
 methodOfFlowControl
@@ -2224,6 +2283,7 @@ nobody's
 nobt
 nodtk
 noflag
+nogroup
 nohang
 noimp
 noinst
@@ -2277,6 +2337,7 @@ oftd
 oid
 oids
 ok
+oksh
 ol
 oldmac
 oldmge
@@ -2287,25 +2348,31 @@ onclick
 ondelay
 oneac
 online
+onlinedischarge
 ont
 ontd
 ontimedays
 ontiniedays
 ooce
 openSUSE
+openipmi
 openjdk
 openlog
+openmp
 opensolaris
 openssh
 openssl
+optimizations
 optiups
 oq
 os
 ostream
 otherprotocols
+otheruser
 outliers
 pF
 pacman
+param
 paramkeywords
 parsability
 parsable
@@ -2343,6 +2410,7 @@ pinouts
 pkg
 pkgconf
 pkgconfig
+pkgin
 plaintext
 plugin
 plugnplay
@@ -2400,6 +2468,7 @@ prog
 prtconf
 psu
 pty
+pulizzi
 pw
 pwl
 pwmib
@@ -2428,6 +2497,7 @@ raritan
 ratedva
 ratedwatts
 rb
+rcctl
 readline
 readonly
 realpower
@@ -2492,6 +2562,7 @@ sbin
 sbindir
 scd
 schemas
+scm
 screenshot
 screenshots
 scriptname
@@ -2514,6 +2585,7 @@ selftest
 sendback
 sendline
 sendmail
+sequentialized
 ser
 seria
 serialno
@@ -2533,6 +2605,7 @@ setvar's
 sfr
 sgml
 sgs
+shm
 shutdownArguments
 shutdowncmd
 shutdowndebounce
@@ -2542,6 +2615,7 @@ shutdowntime
 shutup
 si
 siemens
+sig
 sigaction
 sigmask
 signedness
@@ -2569,6 +2643,7 @@ snprintf
 snprintfcat
 snr
 sockdebug
+socomec
 solaris
 solis
 somepass
@@ -2688,11 +2763,13 @@ th
 timehead
 timeline
 timername
+timestamp
 timeticks
 tiocm
 tios
 tmp
 tmpfiles
+tmpfs
 tonumber
 toolchain
 toolkits
@@ -2719,6 +2796,7 @@ tuple
 turnon
 tw
 tx
+txg
 txt
 typedef
 uA
@@ -2744,12 +2822,14 @@ undervoltage
 unescaped
 uninstall
 uninterruptible
+uniq
 unistd
 unitidentify
 unmapped
 unmounts
 unpowered
 unshutup
+unstash
 updateinfo
 upexia
 upower
@@ -2800,6 +2880,7 @@ upstype
 upsuser
 upswired
 uptime
+urb
 urpmi
 usb
 usbconfig
@@ -2814,6 +2895,7 @@ usec
 useconds
 useradd
 userid
+userland
 usermap
 username
 usernames
@@ -2852,6 +2934,7 @@ vin
 virsh
 virtualenv
 virtualization
+vivo
 vo
 vod
 voltronic
@@ -2859,19 +2942,24 @@ von
 wDescriptorLength
 wakeup
 wastePower
+wc
 wchar
 webserver
 wf
 wget
 whitespace
 wiki
+winnutclient
+wmNUT
 wmnut
 wordformat
 workflow
 workspace
+workspaces
 writability
 writeinfo
 writeups
+ws
 xAAAA
 xCC
 xD
@@ -2890,6 +2978,7 @@ xfff
 xffff
 xfmrresistance
 xh
+xhci
 xhtml
 xmalloc
 xml
@@ -2909,6 +2998,7 @@ xxxxAP
 youruid
 yyy
 zaac
+zfs
 zinto
 zlib
 zsh

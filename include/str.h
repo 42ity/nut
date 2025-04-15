@@ -133,6 +133,10 @@ int	str_to_double_strict(const char *string, double *number, const int base);
  * the caller can use and must free() later on */
 char *	str_concat(size_t count, ...);
 
+/* Return non-zero if string s ends exactly with suff
+ * Note: s=NULL always fails the test; otherwise suff=NULL always matches
+ */
+int	str_ends_with(const char *s, const char *suff);
 #ifdef __cplusplus
 /* *INDENT-OFF* */
 }

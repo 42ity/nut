@@ -4,7 +4,7 @@
  *  Copyright (C)
  *       2005-2006 Olli Savia <ops@iki.fi>
  *       2005-2006 Niels Baggesen <niels@baggesen.net>
- *       2015-2021 Eaton (author: Arnaud Quette <ArnaudQuette@Eaton.com>)
+ *       2015-2019 Eaton (author: Arnaud Quette <ArnaudQuette@Eaton.com>)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 #include "eaton-pdu-marlin-helpers.h"
 #endif
 
-#define PW_MIB_VERSION "1.01"
+#define PW_MIB_VERSION "0.104"
 
 /* TODO: more sysOID and MIBs support:
  *
@@ -453,6 +453,34 @@ static info_lkp_t pw_topology_info[] = {
 		, NULL, NULL, NULL, NULL
 #endif
 	}
+};
+#endif /* USE_PW_MODE_INFO */
+
+/* FIXME: may be standardized
+ * extracted from bcmxcp.c->BCMXCP_TOPOLOGY_*, Make some common definitions */
+static info_lkp_t pw_topology_info[] = {
+	{ 0x0000, "", NULL, NULL }, /* None; use the Table of Elements */
+	{ 0x0010, "Off-line switcher, Single Phase", NULL, NULL },
+	{ 0x0020, "Line-Interactive UPS, Single Phase", NULL, NULL },
+	{ 0x0021, "Line-Interactive UPS, Two Phase", NULL, NULL },
+	{ 0x0022, "Line-Interactive UPS, Three Phase", NULL, NULL },
+	{ 0x0030, "Dual AC Input, On-Line UPS, Single Phase", NULL, NULL },
+	{ 0x0031, "Dual AC Input, On-Line UPS, Two Phase", NULL, NULL },
+	{ 0x0032, "Dual AC Input, On-Line UPS, Three Phase", NULL, NULL },
+	{ 0x0040, "On-Line UPS, Single Phase", NULL, NULL },
+	{ 0x0041, "On-Line UPS, Two Phase", NULL, NULL },
+	{ 0x0042, "On-Line UPS, Three Phase", NULL, NULL },
+	{ 0x0050, "Parallel Redundant On-Line UPS, Single Phase", NULL, NULL },
+	{ 0x0051, "Parallel Redundant On-Line UPS, Two Phase", NULL, NULL },
+	{ 0x0052, "Parallel Redundant On-Line UPS, Three Phase", NULL, NULL },
+	{ 0x0060, "Parallel for Capacity On-Line UPS, Single Phase", NULL, NULL },
+	{ 0x0061, "Parallel for Capacity On-Line UPS, Two Phase", NULL, NULL },
+	{ 0x0062, "Parallel for Capacity On-Line UPS, Three Phase", NULL, NULL },
+	{ 0x0102, "System Bypass Module, Three Phase", NULL, NULL },
+	{ 0x0122, "Hot-Tie Cabinet, Three Phase", NULL, NULL },
+	{ 0x0200, "Outlet Controller, Single Phase", NULL, NULL },
+	{ 0x0222, "Dual AC Input Static Switch Module, 3 Phase", NULL, NULL },
+	{ 0, NULL, NULL, NULL }
 };
 
 /* Legacy implementation */
@@ -911,9 +939,129 @@ static info_lkp_t pw_threshold_humidity_alarms_info[] = {
 	}
 };
 
+static info_lkp_t pw_outlet_status_info[] = {
+	{ 1, "on", NULL, NULL },
+	{ 2, "off", NULL, NULL },
+	{ 3, "on", NULL, NULL },  /* pendingOff, transitional status */
+	{ 4, "off", NULL, NULL }, /* pendingOn, transitional status */
+	/* { 5, "", NULL, NULL },  unknown */
+	/* { 6, "", NULL, NULL },  reserved */
+	{ 7, "off", NULL, NULL }, /* Failed in Closed position */
+	{ 8, "on", NULL, NULL },  /* Failed in Open position */
+	{ 0, NULL, NULL, NULL }
+};
+
+static info_lkp_t pw_ambient_drycontacts_info[] = {
+	{ -1, "unknown", NULL, NULL },
+	{ 1, "opened", NULL, NULL },
+	{ 2, "closed", NULL, NULL },
+	{ 3, "opened", NULL, NULL }, /* openWithNotice   */
+	{ 4, "closed", NULL, NULL }, /* closedWithNotice */
+	{ 0, NULL, NULL, NULL }
+};
+
+#if WITH_SNMP_LKP_FUN
+/* Note: eaton_sensor_temperature_unit_fun() is defined in eaton-pdu-marlin-helpers.c
+ * and su_temperature_read_fun() is in snmp-ups.c
+ * Future work for DMF might provide same-named routines via LUA-C gateway.
+ */
+
+# if WITH_SNMP_LKP_FUN_DUMMY
+/* Temperature unit consideration */
+const char *eaton_sensor_temperature_unit_fun(void *raw_snmp_value) {
+	/* snmp_value here would be a (long*) */
+	NUT_UNUSED_VARIABLE(raw_snmp_value);
+	return "unknown";
+}
+/* FIXME: please DMF, though this should be in snmp-ups.c or equiv. */
+const char *su_temperature_read_fun(void *raw_snmp_value) {
+	/* snmp_value here would be a (long*) */
+	NUT_UNUSED_VARIABLE(raw_snmp_value);
+	return "dummy";
+};
+# endif /* WITH_SNMP_LKP_FUN_DUMMY */
+
+static info_lkp_t pw_sensor_temperature_unit_info[] = {
+	{ 0, "dummy", eaton_sensor_temperature_unit_fun, NULL },
+	{ 0, NULL, NULL, NULL }
+};
+
+static info_lkp_t pw_sensor_temperature_read_info[] = {
+	{ 0, "dummy", su_temperature_read_fun, NULL },
+	{ 0, NULL, NULL, NULL }
+};
+
+#else /* if not WITH_SNMP_LKP_FUN: */
+
+/* FIXME: For now, DMF codebase falls back to old implementation with static
+ * lookup/mapping tables for this, which can easily go into the DMF XML file.
+ */
+static info_lkp_t pw_sensor_temperature_unit_info[] = {
+	{ 0, "kelvin", NULL, NULL },
+	{ 1, "celsius", NULL, NULL },
+	{ 2, "fahrenheit", NULL, NULL },
+	{ 0, NULL, NULL, NULL }
+};
+
+#endif /* WITH_SNMP_LKP_FUN */
+
+static info_lkp_t pw_ambient_drycontacts_polarity_info[] = {
+	{ 0, "normal-opened", NULL, NULL },
+	{ 1, "normal-closed", NULL, NULL },
+	{ 0, NULL, NULL, NULL }
+};
+
+static info_lkp_t pw_ambient_drycontacts_state_info[] = {
+	{ 0, "inactive", NULL, NULL },
+	{ 1, "active", NULL, NULL },
+	{ 0, NULL, NULL, NULL }
+};
+
+static info_lkp_t pw_emp002_ambient_presence_info[] = {
+	{ 0, "unknown", NULL, NULL },
+	{ 2, "yes", NULL, NULL },     /* communicationOK */
+	{ 3, "no", NULL, NULL },      /* communicationLost */
+	{ 0, NULL, NULL, NULL }
+};
+
+/* extracted from drivers/eaton-pdu-marlin-mib.c -> marlin_threshold_status_info */
+static info_lkp_t pw_threshold_status_info[] = {
+	{ 0, "good", NULL, NULL },          /* No threshold triggered */
+	{ 1, "warning-low", NULL, NULL },   /* Warning low threshold triggered */
+	{ 2, "critical-low", NULL, NULL },  /* Critical low threshold triggered */
+	{ 3, "warning-high", NULL, NULL },  /* Warning high threshold triggered */
+	{ 4, "critical-high", NULL, NULL }, /* Critical high threshold triggered */
+	{ 0, NULL, NULL, NULL }
+};
+
+/* extracted from drivers/eaton-pdu-marlin-mib.c -> marlin_threshold_xxx_alarms_info */
+static info_lkp_t pw_threshold_temperature_alarms_info[] = {
+	{ 0, "", NULL, NULL },                           /* No threshold triggered */
+	{ 1, "low temperature warning!", NULL, NULL },   /* Warning low threshold triggered */
+	{ 2, "low temperature critical!", NULL, NULL },  /* Critical low threshold triggered */
+	{ 3, "high temperature warning!", NULL, NULL },  /* Warning high threshold triggered */
+	{ 4, "high temperature critical!", NULL, NULL }, /* Critical high threshold triggered */
+	{ 0, NULL, NULL, NULL }
+};
+
+static info_lkp_t pw_threshold_humidity_alarms_info[] = {
+	{ 0, "", NULL, NULL },                        /* No threshold triggered */
+	{ 1, "low humidity warning!", NULL, NULL },   /* Warning low threshold triggered */
+	{ 2, "low humidity critical!", NULL, NULL },  /* Critical low threshold triggered */
+	{ 3, "high humidity warning!", NULL, NULL },  /* Warning high threshold triggered */
+	{ 4, "high humidity critical!", NULL, NULL }, /* Critical high threshold triggered */
+	{ 0, NULL, NULL, NULL }
+};
+
 /* Snmp2NUT lookup table */
 
 static snmp_info_t pw_mib[] = {
+
+	/* standard MIB items */
+	{ "device.description", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE, ".1.3.6.1.2.1.1.1.0", NULL, SU_FLAG_OK, NULL },
+	{ "device.contact", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE, ".1.3.6.1.2.1.1.4.0", NULL, SU_FLAG_OK, NULL },
+	{ "device.location", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE, ".1.3.6.1.2.1.1.6.0", NULL, SU_FLAG_OK, NULL },
+
 	/* FIXME: miss device page! */
 	/* UPS page */
 	/* info_type, info_flags, info_len, OID, dfl, flags, oid2info, setvar */
@@ -950,7 +1098,7 @@ static snmp_info_t pw_mib[] = {
 	/* FIXME: should be ups.mode or output.source (need RFC) */
 	/* Note: this define is not set via project options; code hidden with
 	 * commit to "snmp-ups: support newer Genepi management cards" */
-	{ "ups.type", ST_FLAG_STRING, SU_INFOSIZE, PW_OID_POWER_STATUS, "",
+	{ "experimental.ups.type", ST_FLAG_STRING, SU_INFOSIZE, PW_OID_POWER_STATUS, "",
 		SU_FLAG_STATIC | SU_FLAG_OK, &pw_mode_info[0] },
 #endif /* USE_PW_MODE_INFO */
 	/* xupsTopologyType.0; Value (Integer): 32 */

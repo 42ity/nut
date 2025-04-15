@@ -24,44 +24,66 @@
 
 #include "cyberpower-mib.h"
 
-#define CYBERPOWER_MIB_VERSION		"0.4"
+#define CYBERPOWER_MIB_VERSION		"0.51"
 #define CYBERPOWER_OID_MODEL_NAME	".1.3.6.1.4.1.3808.1.1.1.1.1.1.0"
 
 /* CPS-MIB::ups */
 #define CYBERPOWER_SYSOID			".1.3.6.1.4.1.3808.1.1.1"
 
+/* https://www.cyberpowersystems.com/products/software/mib-files/ */
+/* Per CPS MIB 2.9 upsBaseOutputStatus OBJECT-TYPE: */
 static info_lkp_t cyberpower_power_status[] = {
-	{ 2, "OL"
+	{ 1, "NULL"	/* unknown */
 #if WITH_SNMP_LKP_FUN
 		, NULL, NULL, NULL, NULL
 #endif
 	},
-	{ 3, "OB"
+	{ 2, "OL"	/* onLine */
 #if WITH_SNMP_LKP_FUN
 		, NULL, NULL, NULL, NULL
 #endif
 	},
-	{ 4, "OL BOOST"
+	{ 3, "OB"	/* onBattery */
 #if WITH_SNMP_LKP_FUN
 		, NULL, NULL, NULL, NULL
 #endif
 	},
-	{ 5, "OFF"
+	{ 4, "OL BOOST"	/* onBoost */
 #if WITH_SNMP_LKP_FUN
 		, NULL, NULL, NULL, NULL
 #endif
 	},
-	{ 7, "OL"
+	{ 5, "OFF"	/* onSleep */
 #if WITH_SNMP_LKP_FUN
 		, NULL, NULL, NULL, NULL
 #endif
 	},
-	{ 1, "NULL"
+	{ 6, "OFF"	/* off */
 #if WITH_SNMP_LKP_FUN
 		, NULL, NULL, NULL, NULL
 #endif
 	},
-	{ 6, "OFF"
+	{ 7, "OL"	/* rebooting */
+#if WITH_SNMP_LKP_FUN
+		, NULL, NULL, NULL, NULL
+#endif
+	},
+	{ 8, "OL"	/* onECO */
+#if WITH_SNMP_LKP_FUN
+		, NULL, NULL, NULL, NULL
+#endif
+	},
+	{ 9, "OL BYPASS"	/* onBypass */
+#if WITH_SNMP_LKP_FUN
+		, NULL, NULL, NULL, NULL
+#endif
+	},
+	{ 10, "OL TRIM"	/* onBuck */
+#if WITH_SNMP_LKP_FUN
+		, NULL, NULL, NULL, NULL
+#endif
+	},
+	{ 11, "OL OVER"	/* onOverload */
 #if WITH_SNMP_LKP_FUN
 		, NULL, NULL, NULL, NULL
 #endif
@@ -139,6 +161,12 @@ static info_lkp_t cyberpower_battrepl_status[] = {
 
 /* Snmp2NUT lookup table for CyberPower MIB */
 static snmp_info_t cyberpower_mib[] = {
+
+	/* standard MIB items */
+	{ "device.description", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE, ".1.3.6.1.2.1.1.1.0", NULL, SU_FLAG_OK, NULL },
+	{ "device.contact", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE, ".1.3.6.1.2.1.1.4.0", NULL, SU_FLAG_OK, NULL },
+	{ "device.location", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE, ".1.3.6.1.2.1.1.6.0", NULL, SU_FLAG_OK, NULL },
+
 	/* Device page */
 	{ "device.type", ST_FLAG_STRING, SU_INFOSIZE, NULL, "ups",
 		SU_FLAG_STATIC | SU_FLAG_ABSENT | SU_FLAG_OK, NULL },

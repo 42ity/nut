@@ -35,7 +35,7 @@
 #include "mge-xml.h"
 #include "main.h" /* for testvar() */
 
-#define MGE_XML_VERSION		"MGEXML/0.32"
+#define MGE_XML_VERSION		"MGEXML/0.36"
 
 #define MGE_XML_INITUPS		"/"
 #define MGE_XML_INITINFO	"/mgeups/product.xml /product.xml /ws/product.xml"
@@ -577,7 +577,7 @@ static const char *mge_ambient_info(const char *arg_val)
 	}
 }
 
-static const char *mge_drycontact_info(const char *val)
+static const char *mge_drycontact_info(const char *arg_val)
 {
 	/* these values should theoretically be obtained through
 	 * Environment.Input[1].State[x].Description
@@ -585,7 +585,7 @@ static const char *mge_drycontact_info(const char *val)
 	 * <OBJECT name="Environment.Input[1].State[0].Description">open</OBJECT>
 	 * <OBJECT name="Environment.Input[1].State[1].Description">closed</OBJECT>
 	 */
-	switch (atoi(val))
+	switch (atoi(arg_val))
 	{
 	case 0:
 		return "opened";
@@ -595,8 +595,6 @@ static const char *mge_drycontact_info(const char *val)
 		return NULL;
 	}
 }
-
-
 
 static const char *mge_timer_shutdown(const char *delay_before_shutoff)
 {
