@@ -70,6 +70,7 @@
 #include "eaton-pdu-nlogic-mib.h"
 #include "eaton-ups-pwnm2-mib.h"
 #include "eaton-ups-pxg-mib.h"
+#include "eaton-pdu-flex-mib.h"
 
 /* Address API change */
 #if ( ! NUT_HAVE_LIBNETSNMP_usmAESPrivProtocol ) && ( ! defined usmAESPrivProtocol )
@@ -105,13 +106,14 @@ static mib2nut_info_t *mib2nut[] = {
 	&compaq,			/* This struct comes from : compaq-mib.c */
 	&cyberpower,		/* This struct comes from : cyberpower-mib.c */
 	&delta_ups,			/* This struct comes from : delta_ups-mib.c */
-	&eaton_ats16_nmc,		/* This struct comes from : eaton-ats16-nmc-mib.c */
+	&eaton_ats16_nmc,	/* This struct comes from : eaton-ats16-nmc-mib.c */
 	&eaton_ats16_nm2,	/* This struct comes from : eaton-ats16-nm2-mib.c */
 	&eaton_ats30,		/* This struct comes from : eaton-ats30-mib.c */
 	&eaton_marlin,		/* This struct comes from : eaton-mib.c */
 	&eaton_pdu_nlogic,	/* This struct comes from : eaton-pdu-nlogic-mib.c */
 	&eaton_pxg_ups,		/* This struct comes from : eaton-ups-pxg-mib.c */
 	&eaton_pw_nm2, 		/* This struct comes from : eaton-ups-pwnm2-mib.c */
+	&eaton_pdu_flex, 	/* This struct comes from : eaton-pdu-flex-mib.c */
 	&emerson_avocent_pdu,	/* This struct comes from : emerson-avocent-pdu-mib.c */
 	&aphel_revelation,	/* This struct comes from : eaton-mib.c */
 	&aphel_genesisII,	/* This struct comes from : eaton-mib.c */
@@ -173,7 +175,7 @@ static const char *mibname;
 static const char *mibvers;
 
 #define DRIVER_NAME	"Generic SNMP UPS driver"
-#define DRIVER_VERSION		"1.28"
+#define DRIVER_VERSION		"1.29"
 
 /* driver description structure */
 upsdrv_info_t	upsdrv_info = {
