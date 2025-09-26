@@ -1,4 +1,4 @@
-/* eaton-pdu-flex-mib.h - subdriver to monitor eaton-pdu-flex SNMP devices with NUT
+/* eaton-pdu-flex-g2-mib.h - subdriver to monitor eaton-pdu-flex-g2 SNMP devices with NUT
  *
  *  Copyright (C)
  *  2011 - 2016	Arnaud Quette <arnaud.quette@free.fr>
@@ -18,12 +18,12 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef EATON_PDU_FLEX_MIB_H
-#define EATON_PDU_FLEX_MIB_H
+#ifndef EATON_PDU_FLEX_G2_MIB_H
+#define EATON_PDU_FLEX_G2_MIB_H
 
 #include "main.h"
 #include "snmp-ups.h"
 
-extern mib2nut_info_t eaton_pdu_flex;
+extern mib2nut_info_t eaton_pdu_flex_g2;
 
-#endif /* EATON_PDU_FLEX_MIB_H */
+#endif /* EATON_PDU_FLEX_G2_MIB_H */

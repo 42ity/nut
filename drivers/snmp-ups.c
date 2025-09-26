@@ -70,7 +70,7 @@
 #include "eaton-pdu-nlogic-mib.h"
 #include "eaton-ups-pwnm2-mib.h"
 #include "eaton-ups-pxg-mib.h"
-#include "eaton-pdu-flex-mib.h"
+#include "eaton-pdu-flex-g2-mib.h"
 
 /* Address API change */
 #if ( ! NUT_HAVE_LIBNETSNMP_usmAESPrivProtocol ) && ( ! defined usmAESPrivProtocol )
@@ -113,7 +113,7 @@ static mib2nut_info_t *mib2nut[] = {
 	&eaton_pdu_nlogic,	/* This struct comes from : eaton-pdu-nlogic-mib.c */
 	&eaton_pxg_ups,		/* This struct comes from : eaton-ups-pxg-mib.c */
 	&eaton_pw_nm2, 		/* This struct comes from : eaton-ups-pwnm2-mib.c */
-	&eaton_pdu_flex, 	/* This struct comes from : eaton-pdu-flex-mib.c */
+	&eaton_pdu_flex_g2, 	/* This struct comes from : eaton-pdu-flex-g2-mib.c */
 	&emerson_avocent_pdu,	/* This struct comes from : emerson-avocent-pdu-mib.c */
 	&aphel_revelation,	/* This struct comes from : eaton-mib.c */
 	&aphel_genesisII,	/* This struct comes from : eaton-mib.c */

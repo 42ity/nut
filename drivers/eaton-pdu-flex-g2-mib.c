@@ -1,4 +1,4 @@
-/* eaton-pdu-flex-mib.c - subdriver to monitor eaton-pdu-flex SNMP devices with NUT
+/* eaton-pdu-flex-g2-mib.c - subdriver to monitor eaton-pdu-flex-g2 SNMP devices with NUT
  *
  *  Copyright (C)
  *  2011 - 2016	Arnaud Quette <arnaud.quette@free.fr>
@@ -21,12 +21,12 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include "eaton-pdu-flex-mib.h"
+#include "eaton-pdu-flex-g2-mib.h"
 
-#define EATON_PDU_FLEX_MIB_VERSION  "0.1"
+#define EATON_PDU_FLEX_G2_MIB_VERSION  "0.1"
 
-#define EATON_PDU_FLEX_SYSOID       ".1.3.6.1.4.1.55508.1"
-#define SYSOID                      EATON_PDU_FLEX_SYSOID
+#define EATON_PDU_FLEX_G2_SYSOID       ".1.3.6.1.4.1.55508.1"
+#define SYSOID                         EATON_PDU_FLEX_G2_SYSOID
 
 /* To create a value lookup structure (as needed on the 2nd line of the example
  * below), use the following kind of declaration, outside of the present snmp_info_t[]:
@@ -37,8 +37,22 @@
  * };
  */
 
-/* EATON_PDU_FLEX Snmp2NUT lookup table */
-static snmp_info_t eaton_pdu_flex_mib[] = {
+static info_lkp_t switchable_status[] = {
+	{ -1, "no", NULL, NULL },
+	{  0, "yes", NULL, NULL },
+	{  1, "yes", NULL, NULL },
+	{  0, NULL, NULL, NULL }
+};
+
+static info_lkp_t onoff_status[] = {
+	{ -1, "none", NULL, NULL },
+	{  0, "off", NULL, NULL },
+	{  1, "on", NULL, NULL },
+	{  0, NULL, NULL, NULL }
+};
+
+/* EATON_PDU_FLEX_G2 Snmp2NUT lookup table */
+static snmp_info_t eaton_pdu_flex_g2_mib[] = {
 
 /* Data format:
  * { info_type, info_flags, info_len, OID, dfl, flags, oid2info },
@@ -69,13 +83,10 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
  */
 	/* Device collection */
 	{ "device.type", ST_FLAG_STRING, SU_INFOSIZE, NULL, "pdu", SU_FLAG_STATIC | SU_FLAG_ABSENT | SU_FLAG_OK, NULL },
-	{ "device.mfr", ST_FLAG_STRING, SU_INFOSIZE, NULL, "Eaton", SU_FLAG_STATIC | SU_FLAG_ABSENT | SU_FLAG_OK, NULL },
-	{ "device.description", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE, ".1.3.6.1.2.1.1.1.0", NULL, SU_FLAG_OK, NULL },
-	{ "device.contact", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE, ".1.3.6.1.2.1.1.4.0", NULL, SU_FLAG_OK, NULL },
+	{ "device.mfr", ST_FLAG_STRING, SU_INFOSIZE, NULL, "EATON", SU_FLAG_STATIC | SU_FLAG_ABSENT | SU_FLAG_OK, NULL },
+	{ "device.contact", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE,  ".1.3.6.1.2.1.1.4.0", NULL, SU_FLAG_OK, NULL },
 	{ "device.location", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE, ".1.3.6.1.2.1.1.6.0", NULL, SU_FLAG_OK, NULL },
-	{ "device.macaddr", ST_FLAG_STRING, SU_INFOSIZE, ".1.3.6.1.2.1.2.2.1.6.2", "", SU_FLAG_OK | SU_FLAG_STATIC, NULL },
-
-	{ "outlet.count", 0, 1, NULL, "8", SU_FLAG_STATIC | SU_FLAG_OK, NULL },
+	{ "device.macaddr", ST_FLAG_STRING, SU_INFOSIZE,               ".1.3.6.1.2.1.2.2.1.6.2", "", SU_FLAG_STATIC | SU_FLAG_OK, NULL },
 
 /*
  * SYSOID specific
@@ -99,12 +110,12 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 	{ "sensor.desc", ST_FLAG_STRING, SU_INFOSIZE,     SYSOID ".1.1.4.0",  NULL, SU_FLAG_OK, NULL },
 	{ "event.type", ST_FLAG_STRING, SU_INFOSIZE,      SYSOID ".1.1.5.0",  NULL, SU_FLAG_OK, NULL },
 	{ "event.datetime", ST_FLAG_STRING, SU_INFOSIZE,  SYSOID ".1.1.6.0",  NULL, SU_FLAG_OK, NULL },
-	{ "load.value", 0, 0.1,                           SYSOID ".1.1.7.0",  NULL, SU_FLAG_OK, NULL },
-	{ "load.value.low", 0, 0.1,                       SYSOID ".1.1.8.0",  NULL, SU_FLAG_OK, NULL },
-	{ "load.value.high", 0, 0.1,                      SYSOID ".1.1.9.0",  NULL, SU_FLAG_OK, NULL },
-	{ "voltage.value", 0, 1,                          SYSOID ".1.1.10.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.value.low", 0, 1,                      SYSOID ".1.1.11.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.value.high", 0, 1,                     SYSOID ".1.1.12.0", NULL, SU_FLAG_OK, NULL },
+	{ "current.value", 0, 0.1,                        SYSOID ".1.1.7.0",  NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "current.value.low", 0, 0.1,                    SYSOID ".1.1.8.0",  NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "current.value.high", 0, 0.1,                   SYSOID ".1.1.9.0",  NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "voltage.value", 0, 1,                          SYSOID ".1.1.10.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "voltage.value.low", 0, 1,                      SYSOID ".1.1.11.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "voltage.value.high", 0, 1,                     SYSOID ".1.1.12.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
 
 ///	/* ipAddress.0 = IpAddress: 10.130.245.91 */      { "unmapped.ipAddress", 0, 1,        SYSOID ".1.2.1.0", NULL, SU_FLAG_OK, NULL },
 ///	/* maskIpAddress.0 = IpAddress: 255.255.255.0 */  { "unmapped.maskIpAddress", 0, 1,    SYSOID ".1.2.2.0", NULL, SU_FLAG_OK, NULL },
@@ -116,16 +127,23 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* trapDestIP2.0 = IpAddress: 0.0.0.0 */          { "unmapped.trapDestIP2", 0, 1,      SYSOID ".1.2.8.0", NULL, SU_FLAG_OK, NULL },
 ///	/* trapDestIP3.0 = IpAddress: 0.0.0.0 */          { "unmapped.trapDestIP3", 0, 1,      SYSOID ".1.2.9.0", NULL, SU_FLAG_OK, NULL },
 ///	/* trapDestIP4.0 = IpAddress: 0.0.0.0 */          { "unmapped.trapDestIP4", 0, 1,      SYSOID ".1.2.10.0", NULL, SU_FLAG_OK, NULL },
-	{ "device.ip.address", 0, 1,     SYSOID ".1.2.1.0",  NULL, SU_FLAG_OK, NULL },
-	{ "device.ip.mask", 0, 1,        SYSOID ".1.2.2.0",  NULL, SU_FLAG_OK, NULL },
-	{ "device.ip.gateway", 0, 1,     SYSOID ".1.2.3.0",  NULL, SU_FLAG_OK, NULL },
-	{ "device.ip.dns.1", 0, 1,       SYSOID ".1.2.4.0",  NULL, SU_FLAG_OK, NULL },
-	{ "device.ip.dns.2", 0, 1,       SYSOID ".1.2.5.0",  NULL, SU_FLAG_OK, NULL },
-	{ "device.system.reboot", 0, 1,  SYSOID ".1.2.6.0",  NULL, SU_FLAG_OK, NULL },
-	{ "device.ip.trap.dest.1", 0, 1, SYSOID ".1.2.7.0",  NULL, SU_FLAG_OK, NULL },
-	{ "device.ip.trap.dest.2", 0, 1, SYSOID ".1.2.8.0",  NULL, SU_FLAG_OK, NULL },
-	{ "device.ip.trap.dest.3", 0, 1, SYSOID ".1.2.9.0",  NULL, SU_FLAG_OK, NULL },
-	{ "device.ip.trap.dest.4", 0, 1, SYSOID ".1.2.10.0", NULL, SU_FLAG_OK, NULL },
+	{ "device.ip.address", ST_FLAG_STRING, SU_INFOSIZE,     SYSOID ".1.2.1.0",  NULL, SU_FLAG_OK, NULL },
+	{ "device.ip.mask", ST_FLAG_STRING, SU_INFOSIZE,        SYSOID ".1.2.2.0",  NULL, SU_FLAG_OK, NULL },
+	{ "device.ip.gateway", ST_FLAG_STRING, SU_INFOSIZE,     SYSOID ".1.2.3.0",  NULL, SU_FLAG_OK, NULL },
+	{ "device.ip.dns.1", ST_FLAG_STRING, SU_INFOSIZE,       SYSOID ".1.2.4.0",  NULL, SU_FLAG_OK, NULL },
+	{ "device.ip.dns.2", ST_FLAG_STRING, SU_INFOSIZE,       SYSOID ".1.2.5.0",  NULL, SU_FLAG_OK, NULL },
+	{ "device.system.reboot", 0, 1,                         SYSOID ".1.2.6.0",  NULL, SU_FLAG_OK, NULL },
+	{ "device.ip.trap.dest.1", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".1.2.7.0",  NULL, SU_FLAG_OK, NULL },
+	{ "device.ip.trap.dest.2", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".1.2.8.0",  NULL, SU_FLAG_OK, NULL },
+	{ "device.ip.trap.dest.3", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".1.2.9.0",  NULL, SU_FLAG_OK, NULL },
+	{ "device.ip.trap.dest.4", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".1.2.10.0", NULL, SU_FLAG_OK, NULL },
+
+/**
+	{ "outlet.count", 0, 1, NULL, "8", SU_FLAG_STATIC | SU_FLAG_OK, NULL },
+	{ "outlet.group.count", 0, 1, NULL, "0", SU_FLAG_STATIC | SU_FLAG_OK, NULL },
+*/
+/// outlet.count is estimated, based on the below OID iteration capabilities (SU_OUTLET)
+/// outlet.group.count is estimated, based on the below OID iteration capabilities (SU_OUTLET_GROUP)
 
 ///	/* p1OutletSeq.0 = INTEGER: 0 */ { "unmapped.p1OutletSeq", 0, 1, SYSOID ".2.1.1.1.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletSeq.1 = INTEGER: 1 */ { "unmapped.p1OutletSeq", 0, 1, SYSOID ".2.1.1.1.1", NULL, SU_FLAG_OK, NULL },
@@ -135,14 +153,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1OutletSeq.5 = INTEGER: 5 */ { "unmapped.p1OutletSeq", 0, 1, SYSOID ".2.1.1.1.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletSeq.6 = INTEGER: 6 */ { "unmapped.p1OutletSeq", 0, 1, SYSOID ".2.1.1.1.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletSeq.7 = INTEGER: 7 */ { "unmapped.p1OutletSeq", 0, 1, SYSOID ".2.1.1.1.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.seq.0", 0, 1, SYSOID ".2.1.1.1.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.seq.1", 0, 1, SYSOID ".2.1.1.1.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.seq.2", 0, 1, SYSOID ".2.1.1.1.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.seq.3", 0, 1, SYSOID ".2.1.1.1.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.seq.4", 0, 1, SYSOID ".2.1.1.1.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.seq.5", 0, 1, SYSOID ".2.1.1.1.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.seq.6", 0, 1, SYSOID ".2.1.1.1.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.seq.7", 0, 1, SYSOID ".2.1.1.1.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.id", 0, 1, SYSOID ".2.1.1.1.%i", NULL, SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* p1OutletNo.0 = STRING: 1 */ { "unmapped.p1OutletNo", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletNo.1 = STRING: 2 */ { "unmapped.p1OutletNo", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.1", NULL, SU_FLAG_OK, NULL },
@@ -152,14 +163,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1OutletNo.5 = STRING: 6 */ { "unmapped.p1OutletNo", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletNo.6 = STRING: 7 */ { "unmapped.p1OutletNo", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletNo.7 = STRING: 8 */ { "unmapped.p1OutletNo", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.no.0", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.no.1", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.no.2", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.no.3", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.no.4", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.no.5", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.no.6", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.no.7", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.name", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.2.%i", NULL, SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* p1OutletDesc.0 = STRING: Outlet_1 */ { "unmapped.p1OutletDesc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletDesc.1 = STRING: Outlet_2 */ { "unmapped.p1OutletDesc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.1", NULL, SU_FLAG_OK, NULL },
@@ -169,14 +173,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1OutletDesc.5 = STRING: Outlet_6 */ { "unmapped.p1OutletDesc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletDesc.6 = STRING: Outlet_7 */ { "unmapped.p1OutletDesc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletDesc.7 = STRING: Outlet_8 */ { "unmapped.p1OutletDesc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.desc.0", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.desc.1", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.desc.2", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.desc.3", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.desc.4", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.desc.5", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.desc.6", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.desc.7", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.desc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.3.%i", NULL, SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* p1OutletSocket.0 = STRING: IEC 320 C13 */ { "unmapped.p1OutletSocket", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletSocket.1 = STRING: IEC 320 C13 */ { "unmapped.p1OutletSocket", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.1", NULL, SU_FLAG_OK, NULL },
@@ -186,14 +183,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1OutletSocket.5 = STRING: IEC 320 C13 */ { "unmapped.p1OutletSocket", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletSocket.6 = STRING: IEC 320 C13 */ { "unmapped.p1OutletSocket", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletSocket.7 = STRING: IEC 320 C13 */ { "unmapped.p1OutletSocket", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.socket.0", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.socket.1", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.socket.2", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.socket.3", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.socket.4", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.socket.5", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.socket.6", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.socket.7", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.type", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.4.%i", NULL, SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* p1OutletFuse.0 = STRING: -- */ { "unmapped.p1OutletFuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletFuse.1 = STRING: -- */ { "unmapped.p1OutletFuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.1", NULL, SU_FLAG_OK, NULL },
@@ -203,14 +193,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1OutletFuse.5 = STRING: -- */ { "unmapped.p1OutletFuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletFuse.6 = STRING: -- */ { "unmapped.p1OutletFuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletFuse.7 = STRING: -- */ { "unmapped.p1OutletFuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.fuse.0", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.fuse.1", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.fuse.2", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.fuse.3", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.fuse.4", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.fuse.5", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.fuse.6", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.fuse.7", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.fuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.1.1.5.%i", NULL, SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* p1OutletOnOff.0 = INTEGER: on(1) */ { "unmapped.p1OutletOnOff", 0, 1, SYSOID ".2.1.1.6.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletOnOff.1 = INTEGER: on(1) */ { "unmapped.p1OutletOnOff", 0, 1, SYSOID ".2.1.1.6.1", NULL, SU_FLAG_OK, NULL },
@@ -220,14 +203,11 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1OutletOnOff.5 = INTEGER: on(1) */ { "unmapped.p1OutletOnOff", 0, 1, SYSOID ".2.1.1.6.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletOnOff.6 = INTEGER: on(1) */ { "unmapped.p1OutletOnOff", 0, 1, SYSOID ".2.1.1.6.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletOnOff.7 = INTEGER: on(1) */ { "unmapped.p1OutletOnOff", 0, 1, SYSOID ".2.1.1.6.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.onOff.0", 0, 1, SYSOID ".2.1.1.6.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.onOff.1", 0, 1, SYSOID ".2.1.1.6.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.onOff.2", 0, 1, SYSOID ".2.1.1.6.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.onOff.3", 0, 1, SYSOID ".2.1.1.6.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.onOff.4", 0, 1, SYSOID ".2.1.1.6.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.onOff.5", 0, 1, SYSOID ".2.1.1.6.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.onOff.6", 0, 1, SYSOID ".2.1.1.6.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.onOff.7", 0, 1, SYSOID ".2.1.1.6.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.status", 0, 1, SYSOID ".2.1.1.6.%i", NULL, SU_OUTLET | SU_FLAG_OK, &onoff_status[0] },
+	{ "outlet.%i.switchable", 0, 1, SYSOID ".2.1.1.6.%i", "no", SU_OUTLET | SU_FLAG_OK, &switchable_status[0] },
+
+/// outlet.0.status gives global switchability
+	{ "outlet.switchable", 0, 1, SYSOID ".2.1.1.6.0", "no", SU_FLAG_STATIC | SU_FLAG_OK, &switchable_status[0] },
 
 ///	/* p1OutletLoad.0 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoad", 0, 1, SYSOID ".2.1.1.7.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletLoad.1 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoad", 0, 1, SYSOID ".2.1.1.7.1", NULL, SU_FLAG_OK, NULL },
@@ -237,14 +217,9 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1OutletLoad.5 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoad", 0, 1, SYSOID ".2.1.1.7.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletLoad.6 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoad", 0, 1, SYSOID ".2.1.1.7.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletLoad.7 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoad", 0, 1, SYSOID ".2.1.1.7.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.0", 0, 0.1, SYSOID ".2.1.1.7.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.1", 0, 0.1, SYSOID ".2.1.1.7.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.2", 0, 0.1, SYSOID ".2.1.1.7.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.3", 0, 0.1, SYSOID ".2.1.1.7.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.4", 0, 0.1, SYSOID ".2.1.1.7.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.5", 0, 0.1, SYSOID ".2.1.1.7.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.6", 0, 0.1, SYSOID ".2.1.1.7.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.7", 0, 0.1, SYSOID ".2.1.1.7.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.current", 0, 0.1, SYSOID ".2.1.1.7.%i", "0", SU_FLAG_NEGINVALID | SU_OUTLET | SU_FLAG_OK, NULL },
+	{ "outlet.%i.current.status", ST_FLAG_STRING, SU_INFOSIZE, NULL, "good", SU_FLAG_STATIC | SU_OUTLET | SU_FLAG_OK, NULL },
+	{ "outlet.%i.groupid", ST_FLAG_STRING, SU_INFOSIZE, NULL, "0", SU_FLAG_STATIC | SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* p1OutletLoadLowLimit.0 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoadLowLimit", 0, 1, SYSOID ".2.1.1.8.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletLoadLowLimit.1 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoadLowLimit", 0, 1, SYSOID ".2.1.1.8.1", NULL, SU_FLAG_OK, NULL },
@@ -254,14 +229,8 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1OutletLoadLowLimit.5 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoadLowLimit", 0, 1, SYSOID ".2.1.1.8.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletLoadLowLimit.6 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoadLowLimit", 0, 1, SYSOID ".2.1.1.8.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletLoadLowLimit.7 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoadLowLimit", 0, 1, SYSOID ".2.1.1.8.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.low.0", 0, 0.1, SYSOID ".2.1.1.8.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.low.1", 0, 0.1, SYSOID ".2.1.1.8.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.low.2", 0, 0.1, SYSOID ".2.1.1.8.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.low.3", 0, 0.1, SYSOID ".2.1.1.8.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.low.4", 0, 0.1, SYSOID ".2.1.1.8.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.low.5", 0, 0.1, SYSOID ".2.1.1.8.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.low.6", 0, 0.1, SYSOID ".2.1.1.8.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.low.7", 0, 0.1, SYSOID ".2.1.1.8.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.current.low.warning",  0, 0.1, SYSOID ".2.1.1.8.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET | SU_FLAG_OK, NULL },
+	{ "outlet.%i.current.low.critical", 0, 0.1, SYSOID ".2.1.1.8.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* p1OutletLoadHighLimit.0 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoadHighLimit", 0, 1, SYSOID ".2.1.1.9.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletLoadHighLimit.1 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoadHighLimit", 0, 1, SYSOID ".2.1.1.9.1", NULL, SU_FLAG_OK, NULL },
@@ -271,14 +240,8 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1OutletLoadHighLimit.5 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoadHighLimit", 0, 1, SYSOID ".2.1.1.9.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletLoadHighLimit.6 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoadHighLimit", 0, 1, SYSOID ".2.1.1.9.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletLoadHighLimit.7 = INTEGER: -1 tenth A */ { "unmapped.p1OutletLoadHighLimit", 0, 1, SYSOID ".2.1.1.9.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.high.0", 0, 0.1, SYSOID ".2.1.1.9.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.high.1", 0, 0.1, SYSOID ".2.1.1.9.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.high.2", 0, 0.1, SYSOID ".2.1.1.9.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.high.3", 0, 0.1, SYSOID ".2.1.1.9.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.high.4", 0, 0.1, SYSOID ".2.1.1.9.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.high.5", 0, 0.1, SYSOID ".2.1.1.9.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.high.6", 0, 0.1, SYSOID ".2.1.1.9.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.load.limit.high.7", 0, 0.1, SYSOID ".2.1.1.9.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.current.high.warning",  0, 0.1, SYSOID ".2.1.1.9.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET | SU_FLAG_OK, NULL },
+	{ "outlet.%i.current.high.critical", 0, 0.1, SYSOID ".2.1.1.9.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* p1OutletEnergy.0 = INTEGER: -1 hundredth kWh */ { "unmapped.p1OutletEnergy", 0, 1, SYSOID ".2.1.1.10.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletEnergy.1 = INTEGER: -1 hundredth kWh */ { "unmapped.p1OutletEnergy", 0, 1, SYSOID ".2.1.1.10.1", NULL, SU_FLAG_OK, NULL },
@@ -288,14 +251,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1OutletEnergy.5 = INTEGER: -1 hundredth kWh */ { "unmapped.p1OutletEnergy", 0, 1, SYSOID ".2.1.1.10.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletEnergy.6 = INTEGER: -1 hundredth kWh */ { "unmapped.p1OutletEnergy", 0, 1, SYSOID ".2.1.1.10.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1OutletEnergy.7 = INTEGER: -1 hundredth kWh */ { "unmapped.p1OutletEnergy", 0, 1, SYSOID ".2.1.1.10.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.energy.0", 0, 0.01, SYSOID ".2.1.1.10.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.energy.1", 0, 0.01, SYSOID ".2.1.1.10.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.energy.2", 0, 0.01, SYSOID ".2.1.1.10.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.energy.3", 0, 0.01, SYSOID ".2.1.1.10.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.energy.4", 0, 0.01, SYSOID ".2.1.1.10.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.energy.5", 0, 0.01, SYSOID ".2.1.1.10.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.energy.6", 0, 0.01, SYSOID ".2.1.1.10.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.energy.7", 0, 0.01, SYSOID ".2.1.1.10.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.energy", 0, 0.01, SYSOID ".2.1.1.10.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* p1Power.0 = INTEGER: -1 hundredth W */ { "unmapped.p1Power", 0, 1, SYSOID ".2.1.1.11.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1Power.1 = INTEGER: -1 hundredth W */ { "unmapped.p1Power", 0, 1, SYSOID ".2.1.1.11.1", NULL, SU_FLAG_OK, NULL },
@@ -305,14 +261,8 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1Power.5 = INTEGER: -1 hundredth W */ { "unmapped.p1Power", 0, 1, SYSOID ".2.1.1.11.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1Power.6 = INTEGER: -1 hundredth W */ { "unmapped.p1Power", 0, 1, SYSOID ".2.1.1.11.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1Power.7 = INTEGER: -1 hundredth W */ { "unmapped.p1Power", 0, 1, SYSOID ".2.1.1.11.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.power.0", 0, 0.01, SYSOID ".2.1.1.11.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.power.1", 0, 0.01, SYSOID ".2.1.1.11.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.power.2", 0, 0.01, SYSOID ".2.1.1.11.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.power.3", 0, 0.01, SYSOID ".2.1.1.11.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.power.4", 0, 0.01, SYSOID ".2.1.1.11.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.power.5", 0, 0.01, SYSOID ".2.1.1.11.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.power.6", 0, 0.01, SYSOID ".2.1.1.11.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.power.7", 0, 0.01, SYSOID ".2.1.1.11.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.power",     0, 0.01, SYSOID ".2.1.1.11.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET | SU_FLAG_OK, NULL },
+	{ "outlet.%i.realpower", 0, 0.01, SYSOID ".2.1.1.11.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* p1PowerFactor.0 = INTEGER: -1 hundredth */ { "unmapped.p1PowerFactor", 0, 1, SYSOID ".2.1.1.12.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p1PowerFactor.1 = INTEGER: -1 hundredth */ { "unmapped.p1PowerFactor", 0, 1, SYSOID ".2.1.1.12.1", NULL, SU_FLAG_OK, NULL },
@@ -322,14 +272,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p1PowerFactor.5 = INTEGER: -1 hundredth */ { "unmapped.p1PowerFactor", 0, 1, SYSOID ".2.1.1.12.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p1PowerFactor.6 = INTEGER: -1 hundredth */ { "unmapped.p1PowerFactor", 0, 1, SYSOID ".2.1.1.12.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p1PowerFactor.7 = INTEGER: -1 hundredth */ { "unmapped.p1PowerFactor", 0, 1, SYSOID ".2.1.1.12.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.powerFactor.0", 0, 0.01, SYSOID ".2.1.1.12.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.powerFactor.1", 0, 0.01, SYSOID ".2.1.1.12.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.powerFactor.2", 0, 0.01, SYSOID ".2.1.1.12.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.powerFactor.3", 0, 0.01, SYSOID ".2.1.1.12.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.powerFactor.4", 0, 0.01, SYSOID ".2.1.1.12.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.powerFactor.5", 0, 0.01, SYSOID ".2.1.1.12.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.powerFactor.6", 0, 0.01, SYSOID ".2.1.1.12.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.powerFactor.7", 0, 0.01, SYSOID ".2.1.1.12.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.%i.powerFactor", 0, 0.01, SYSOID ".2.1.1.12.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET | SU_FLAG_OK, NULL },
 
 ///	/* power1OutletEntry.13.0 = INTEGER: 0 */ { "unmapped.power1OutletEntry", 0, 1, SYSOID ".2.1.1.13.0", NULL, SU_FLAG_OK, NULL },
 ///	/* power1OutletEntry.13.1 = INTEGER: 0 */ { "unmapped.power1OutletEntry", 0, 1, SYSOID ".2.1.1.13.1", NULL, SU_FLAG_OK, NULL },
@@ -339,14 +282,6 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* power1OutletEntry.13.5 = INTEGER: 0 */ { "unmapped.power1OutletEntry", 0, 1, SYSOID ".2.1.1.13.5", NULL, SU_FLAG_OK, NULL },
 ///	/* power1OutletEntry.13.6 = INTEGER: 0 */ { "unmapped.power1OutletEntry", 0, 1, SYSOID ".2.1.1.13.6", NULL, SU_FLAG_OK, NULL },
 ///	/* power1OutletEntry.13.7 = INTEGER: 0 */ { "unmapped.power1OutletEntry", 0, 1, SYSOID ".2.1.1.13.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.entry.0", 0, 1, SYSOID ".2.1.1.13.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.entry.1", 0, 1, SYSOID ".2.1.1.13.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.entry.2", 0, 1, SYSOID ".2.1.1.13.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.entry.3", 0, 1, SYSOID ".2.1.1.13.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.entry.4", 0, 1, SYSOID ".2.1.1.13.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.entry.5", 0, 1, SYSOID ".2.1.1.13.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.entry.6", 0, 1, SYSOID ".2.1.1.13.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.1.outlet.entry.7", 0, 1, SYSOID ".2.1.1.13.7", NULL, SU_FLAG_OK, NULL },
 
 ///	/* p3OutletSeq.0 = INTEGER: 0 */ { "unmapped.p3OutletSeq", 0, 1, SYSOID ".2.3.1.1.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletSeq.1 = INTEGER: 1 */ { "unmapped.p3OutletSeq", 0, 1, SYSOID ".2.3.1.1.1", NULL, SU_FLAG_OK, NULL },
@@ -356,14 +291,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p3OutletSeq.5 = INTEGER: 5 */ { "unmapped.p3OutletSeq", 0, 1, SYSOID ".2.3.1.1.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletSeq.6 = INTEGER: 6 */ { "unmapped.p3OutletSeq", 0, 1, SYSOID ".2.3.1.1.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletSeq.7 = INTEGER: 7 */ { "unmapped.p3OutletSeq", 0, 1, SYSOID ".2.3.1.1.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.seq.0", 0, 1, SYSOID ".2.3.1.1.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.seq.1", 0, 1, SYSOID ".2.3.1.1.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.seq.2", 0, 1, SYSOID ".2.3.1.1.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.seq.3", 0, 1, SYSOID ".2.3.1.1.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.seq.4", 0, 1, SYSOID ".2.3.1.1.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.seq.5", 0, 1, SYSOID ".2.3.1.1.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.seq.6", 0, 1, SYSOID ".2.3.1.1.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.seq.7", 0, 1, SYSOID ".2.3.1.1.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.group.%i.id", 0, 1, SYSOID ".2.3.1.1.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET_GROUP | SU_FLAG_OK, NULL },
 
 ///	/* p3OutletNo.0 = STRING: 1 */ { "unmapped.p3OutletNo", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletNo.1 = STRING: 2 */ { "unmapped.p3OutletNo", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.1", NULL, SU_FLAG_OK, NULL },
@@ -373,14 +301,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p3OutletNo.5 = STRING: 6 */ { "unmapped.p3OutletNo", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletNo.6 = STRING: 7 */ { "unmapped.p3OutletNo", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletNo.7 = STRING: 8 */ { "unmapped.p3OutletNo", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.no.0", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.no.1", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.no.2", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.no.3", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.no.4", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.no.5", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.no.6", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.no.7", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.group.%i.name", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.2.%i", NULL, SU_OUTLET_GROUP | SU_FLAG_OK, NULL },
 
 ///	/* p3OutletDesc.0 = STRING: ALL */     { "unmapped.p3OutletDesc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletDesc.1 = STRING: Group 2 */ { "unmapped.p3OutletDesc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.1", NULL, SU_FLAG_OK, NULL },
@@ -390,14 +311,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p3OutletDesc.5 = STRING: Group 6 */ { "unmapped.p3OutletDesc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletDesc.6 = STRING: Group 7 */ { "unmapped.p3OutletDesc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletDesc.7 = STRING: Group 8 */ { "unmapped.p3OutletDesc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.desc.0", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.desc.1", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.desc.2", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.desc.3", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.desc.4", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.desc.5", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.desc.6", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.desc.7", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.group.%i.desc", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.3.%i", NULL, SU_OUTLET_GROUP | SU_FLAG_OK, NULL },
 
 ///	/* p3OutletSocket.0 = Wrong Type (should be OCTET STRING): INTEGER: -1 */ { "unmapped.p3OutletSocket", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletSocket.1 = Wrong Type (should be OCTET STRING): INTEGER: -1 */ { "unmapped.p3OutletSocket", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.1", NULL, SU_FLAG_OK, NULL },
@@ -407,14 +321,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p3OutletSocket.5 = Wrong Type (should be OCTET STRING): INTEGER: -1 */ { "unmapped.p3OutletSocket", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletSocket.6 = Wrong Type (should be OCTET STRING): INTEGER: -1 */ { "unmapped.p3OutletSocket", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletSocket.7 = Wrong Type (should be OCTET STRING): INTEGER: -1 */ { "unmapped.p3OutletSocket", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.socket.0", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.socket.1", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.socket.2", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.socket.3", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.socket.4", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.socket.5", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.socket.6", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.socket.7", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.4.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.group.%i.type", 0, 1, SYSOID ".2.3.1.4.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET_GROUP | SU_FLAG_OK, NULL },
 
 ///	/* p3OutletFuse.0 = Wrong Type (should be OCTET STRING): INTEGER: -1 */ { "unmapped.p3OutletFuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletFuse.1 = Wrong Type (should be OCTET STRING): INTEGER: -1 */ { "unmapped.p3OutletFuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.1", NULL, SU_FLAG_OK, NULL },
@@ -424,14 +331,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p3OutletFuse.5 = Wrong Type (should be OCTET STRING): INTEGER: -1 */ { "unmapped.p3OutletFuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletFuse.6 = Wrong Type (should be OCTET STRING): INTEGER: -1 */ { "unmapped.p3OutletFuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletFuse.7 = Wrong Type (should be OCTET STRING): INTEGER: -1 */ { "unmapped.p3OutletFuse", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.fuse.0", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.fuse.1", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.fuse.2", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.fuse.3", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.fuse.4", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.fuse.5", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.fuse.6", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.fuse.7", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.3.1.5.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.group.%i.fuse", 0, 1, SYSOID ".2.3.1.5.%i", NULL, SU_OUTLET_GROUP | SU_FLAG_OK, NULL },
 
 ///	/* p3OutletOnOff.0 = INTEGER: none(-1) */ { "unmapped.p3OutletOnOff", 0, 1, SYSOID ".2.3.1.6.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletOnOff.1 = INTEGER: none(-1) */ { "unmapped.p3OutletOnOff", 0, 1, SYSOID ".2.3.1.6.1", NULL, SU_FLAG_OK, NULL },
@@ -441,14 +341,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p3OutletOnOff.5 = INTEGER: none(-1) */ { "unmapped.p3OutletOnOff", 0, 1, SYSOID ".2.3.1.6.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletOnOff.6 = INTEGER: none(-1) */ { "unmapped.p3OutletOnOff", 0, 1, SYSOID ".2.3.1.6.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletOnOff.7 = INTEGER: none(-1) */ { "unmapped.p3OutletOnOff", 0, 1, SYSOID ".2.3.1.6.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.onOff.0", 0, 1, SYSOID ".2.3.1.6.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.onOff.1", 0, 1, SYSOID ".2.3.1.6.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.onOff.2", 0, 1, SYSOID ".2.3.1.6.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.onOff.3", 0, 1, SYSOID ".2.3.1.6.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.onOff.4", 0, 1, SYSOID ".2.3.1.6.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.onOff.5", 0, 1, SYSOID ".2.3.1.6.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.onOff.6", 0, 1, SYSOID ".2.3.1.6.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.onOff.7", 0, 1, SYSOID ".2.3.1.6.7", NULL, SU_FLAG_OK, NULL },
+    { "outlet.group.%i.status", 0, 1, SYSOID ".2.3.1.6.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET_GROUP | SU_FLAG_OK, &onoff_status[0] },
 
 ///	/* p3OutletLoad.0 = INTEGER: -1 tenth A */ { "unmapped.p3OutletLoad", 0, 1, SYSOID ".2.3.1.7.0", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletLoad.1 = INTEGER: -1 tenth A */ { "unmapped.p3OutletLoad", 0, 1, SYSOID ".2.3.1.7.1", NULL, SU_FLAG_OK, NULL },
@@ -458,14 +351,7 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* p3OutletLoad.5 = INTEGER: -1 tenth A */ { "unmapped.p3OutletLoad", 0, 1, SYSOID ".2.3.1.7.5", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletLoad.6 = INTEGER: -1 tenth A */ { "unmapped.p3OutletLoad", 0, 1, SYSOID ".2.3.1.7.6", NULL, SU_FLAG_OK, NULL },
 ///	/* p3OutletLoad.7 = INTEGER: -1 tenth A */ { "unmapped.p3OutletLoad", 0, 1, SYSOID ".2.3.1.7.7", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.load.0", 0, 0.1, SYSOID ".2.3.1.7.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.load.1", 0, 0.1, SYSOID ".2.3.1.7.1", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.load.2", 0, 0.1, SYSOID ".2.3.1.7.2", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.load.3", 0, 0.1, SYSOID ".2.3.1.7.3", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.load.4", 0, 0.1, SYSOID ".2.3.1.7.4", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.load.5", 0, 0.1, SYSOID ".2.3.1.7.5", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.load.6", 0, 0.1, SYSOID ".2.3.1.7.6", NULL, SU_FLAG_OK, NULL },
-	{ "power.3.outlet.load.7", 0, 0.1, SYSOID ".2.3.1.7.7", NULL, SU_FLAG_OK, NULL },
+	{ "outlet.group.%i.current", 0, 0.1, SYSOID ".2.3.1.7.%i", NULL, SU_FLAG_NEGINVALID | SU_OUTLET_GROUP | SU_FLAG_OK, NULL },
 
 ///	/* powerSeq.0 = INTEGER: 0 */            { "unmapped.powerSeq", 0, 1,                          SYSOID ".2.5.1.1.0", NULL, SU_FLAG_OK, NULL },
 ///	/* powerID.0 = STRING: 505197 */         { "unmapped.powerID", ST_FLAG_STRING, SU_INFOSIZE,    SYSOID ".2.5.1.2.0", NULL, SU_FLAG_OK, NULL },
@@ -480,7 +366,8 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 	{ "power.model", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.5.1.5.0", NULL, SU_FLAG_OK, NULL },
 	{ "power.onGap", 0, 1,                        SYSOID ".2.5.1.6.0", NULL, SU_FLAG_OK, NULL },
 
-	{ "device.model", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.5.1.5.0", NULL, SU_FLAG_OK, NULL }, // power.model
+	{ "device.description", ST_FLAG_STRING | ST_FLAG_RW, SU_INFOSIZE, SYSOID ".2.5.1.3.0", NULL, SU_FLAG_OK, NULL }, // powerName
+	{ "device.model",       ST_FLAG_STRING, SU_INFOSIZE,              SYSOID ".2.5.1.5.0", NULL, SU_FLAG_OK, NULL }, // powerModel
 
 ///	/* totalLoadA.0 = INTEGER: 0 tenth A */            { "unmapped.totalLoadA", 0, 1,          SYSOID ".2.5.1.7.0", NULL, SU_FLAG_OK, NULL },
 ///	/* totalLoadALowLimit.0 = INTEGER: 0 tenth A */    { "unmapped.totalLoadALowLimit", 0, 1,  SYSOID ".2.5.1.8.0", NULL, SU_FLAG_OK, NULL },
@@ -491,15 +378,26 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* totalLoadC.0 = INTEGER: -1 tenth A */           { "unmapped.totalLoadC", 0, 1,          SYSOID ".2.5.1.13.0", NULL, SU_FLAG_OK, NULL },
 ///	/* totalLoadCLowLimit.0 = INTEGER: -1 tenth A */   { "unmapped.totalLoadCLowLimit", 0, 1,  SYSOID ".2.5.1.14.0", NULL, SU_FLAG_OK, NULL },
 ///	/* totalLoadCHighLimit.0 = INTEGER: -1 tenth A */  { "unmapped.totalLoadCHighLimit", 0, 1, SYSOID ".2.5.1.15.0", NULL, SU_FLAG_OK, NULL },
-	{ "load.A.total", 0, 0.1,            SYSOID ".2.5.1.7.0", NULL, SU_FLAG_OK, NULL },
-	{ "load.A.total.limit.low", 0, 0.1,  SYSOID ".2.5.1.8.0", NULL, SU_FLAG_OK, NULL },
-	{ "load.A.total.limit.high", 0, 0.1, SYSOID ".2.5.1.9.0", NULL, SU_FLAG_OK, NULL },
-	{ "load.B.total", 0, 0.1,            SYSOID ".2.5.1.10.0", NULL, SU_FLAG_OK, NULL },
-	{ "load.B.total.limit.low", 0, 0.1,  SYSOID ".2.5.1.11.0", NULL, SU_FLAG_OK, NULL },
-	{ "load.B.total.limit.high", 0, 0.1, SYSOID ".2.5.1.12.0", NULL, SU_FLAG_OK, NULL },
-	{ "load.C.total", 0, 0.1,            SYSOID ".2.5.1.13.0", NULL, SU_FLAG_OK, NULL },
-	{ "load.C.total.limit.low", 0, 0.1,  SYSOID ".2.5.1.14.0", NULL, SU_FLAG_OK, NULL },
-	{ "load.C.total.limit.high", 0, 0.1, SYSOID ".2.5.1.15.0", NULL, SU_FLAG_OK, NULL },
+	{ "input.current", 0, 0.1,                  SYSOID ".2.5.1.7.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.current.low.warning", 0, 0.1,      SYSOID ".2.5.1.8.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.current.low.critical", 0, 0.1,     SYSOID ".2.5.1.8.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.current.high.warning", 0, 0.1,     SYSOID ".2.5.1.9.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.current.high.critical", 0, 0.1,    SYSOID ".2.5.1.9.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L1.current", 0, 0.1,               SYSOID ".2.5.1.7.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L1.current.low.warning", 0, 0.1,   SYSOID ".2.5.1.8.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L1.current.low.critical", 0, 0.1,  SYSOID ".2.5.1.8.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L1.current.high.warning", 0, 0.1,  SYSOID ".2.5.1.9.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L1.current.high.critical", 0, 0.1, SYSOID ".2.5.1.9.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2.current", 0, 0.1,               SYSOID ".2.5.1.10.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2.current.low.warning", 0, 0.1,   SYSOID ".2.5.1.11.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2.current.low.critical", 0, 0.1,  SYSOID ".2.5.1.11.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2.current.high.warning", 0, 0.1,  SYSOID ".2.5.1.12.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2.current.high.critical", 0, 0.1, SYSOID ".2.5.1.12.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3.current", 0, 0.1,               SYSOID ".2.5.1.13.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3.current.low.warning", 0, 0.1,   SYSOID ".2.5.1.14.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3.current.low.critical", 0, 0.1,  SYSOID ".2.5.1.14.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3.current.high.warning", 0, 0.1,  SYSOID ".2.5.1.15.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3.current.high.critical", 0, 0.1, SYSOID ".2.5.1.15.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
 
 ///	/* voltageA.0 = INTEGER: 241 V */          { "unmapped.voltageA", 0, 1,          SYSOID ".2.5.1.16.0", NULL, SU_FLAG_OK, NULL },
 ///	/* voltageB.0 = INTEGER: -1 V */           { "unmapped.voltageB", 0, 1,          SYSOID ".2.5.1.17.0", NULL, SU_FLAG_OK, NULL },
@@ -510,15 +408,26 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* voltageBHighLimit.0 = INTEGER: -1 V */  { "unmapped.voltageBHighLimit", 0, 1, SYSOID ".2.5.1.51.0", NULL, SU_FLAG_OK, NULL },
 ///	/* voltageCLowLimit.0 = INTEGER: -1 V */   { "unmapped.voltageCLowLimit", 0, 1,  SYSOID ".2.5.1.52.0", NULL, SU_FLAG_OK, NULL },
 ///	/* voltageCHighLimit.0 = INTEGER: -1 V */  { "unmapped.voltageCHighLimit", 0, 1, SYSOID ".2.5.1.53.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.A", 0, 1,            SYSOID ".2.5.1.16.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.B", 0, 1,            SYSOID ".2.5.1.17.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.C", 0, 1,            SYSOID ".2.5.1.18.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.A.limit.low", 0, 1,  SYSOID ".2.5.1.48.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.A.limit.high", 0, 1, SYSOID ".2.5.1.49.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.B.limit.low", 0, 1,  SYSOID ".2.5.1.50.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.B.limit.high", 0, 1, SYSOID ".2.5.1.51.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.C.limit.low", 0, 1,  SYSOID ".2.5.1.52.0", NULL, SU_FLAG_OK, NULL },
-	{ "voltage.C.limit.high", 0, 1, SYSOID ".2.5.1.53.0", NULL, SU_FLAG_OK, NULL },
+	{ "input.voltage", 0, 1,                    SYSOID ".2.5.1.16.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.voltage.low.warning", 0, 1,        SYSOID ".2.5.1.48.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.voltage.low.critical", 0, 1,       SYSOID ".2.5.1.48.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.voltage.high.warning", 0, 1,       SYSOID ".2.5.1.49.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.voltage.high.critical", 0, 1,      SYSOID ".2.5.1.49.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L1-N.voltage", 0, 1,               SYSOID ".2.5.1.16.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L1-N.voltage.low.warning", 0, 1,   SYSOID ".2.5.1.48.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L1-N.voltage.low.critical", 0, 1,  SYSOID ".2.5.1.48.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L1-N.voltage.high.warning", 0, 1,  SYSOID ".2.5.1.49.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L1-N.voltage.high.critical", 0, 1, SYSOID ".2.5.1.49.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2-N.voltage", 0, 1,               SYSOID ".2.5.1.17.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2-N.voltage.low.warning", 0, 1,   SYSOID ".2.5.1.50.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2-N.voltage.low.critical", 0, 1,  SYSOID ".2.5.1.50.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2-N.voltage.high.warning", 0, 1,  SYSOID ".2.5.1.51.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2-N.voltage.high.critical", 0, 1, SYSOID ".2.5.1.51.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3-N.voltage", 0, 1,               SYSOID ".2.5.1.18.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3-N.voltage.low.warning", 0, 1,   SYSOID ".2.5.1.52.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3-N.voltage.low.critical", 0, 1,  SYSOID ".2.5.1.52.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3-N.voltage.high.warning", 0, 1,  SYSOID ".2.5.1.53.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3-N.voltage.high.critical", 0, 1, SYSOID ".2.5.1.53.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
 
 ///	/* powerEnergy.0 = INTEGER: 0 tenth kWh */    { "unmapped.powerEnergy", 0, 1,    SYSOID ".2.5.1.19.0", NULL, SU_FLAG_OK, NULL },
 ///	/* activePowerA.0 = INTEGER: 0 tenth W */     { "unmapped.activePowerA", 0, 1,   SYSOID ".2.5.1.20.0", NULL, SU_FLAG_OK, NULL },
@@ -536,22 +445,29 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* remainPowerC.0 = INTEGER: -1 tenth W */    { "unmapped.remainPowerC", 0, 1,   SYSOID ".2.5.1.32.0", NULL, SU_FLAG_OK, NULL },
 ///	/* apparentPowerC.0 = INTEGER: -1 tenth W */  { "unmapped.apparentPowerC", 0, 1, SYSOID ".2.5.1.33.0", NULL, SU_FLAG_OK, NULL },
 ///	/* powerFactorC.0 = INTEGER: -1 hundredth */  { "unmapped.powerFactorC", 0, 1,   SYSOID ".2.5.1.34.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.energy", 0, 0.1,         SYSOID ".2.5.1.19.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.A.active", 0, 0.1,       SYSOID ".2.5.1.20.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.A.rated", 0, 0.1,        SYSOID ".2.5.1.21.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.A.remain", 0, 0.1,       SYSOID ".2.5.1.22.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.A.apparent", 0, 0.1,     SYSOID ".2.5.1.23.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.A.powerFactor", 0, 0.01, SYSOID ".2.5.1.24.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.B.active", 0, 0.1,       SYSOID ".2.5.1.25.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.B.rated", 0, 0.1,        SYSOID ".2.5.1.26.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.B.remain", 0, 0.1,       SYSOID ".2.5.1.27.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.B.apparent", 0, 0.1,     SYSOID ".2.5.1.28.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.B.powerFactor", 0, 0.01, SYSOID ".2.5.1.29.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.C.active", 0, 0.1,       SYSOID ".2.5.1.30.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.C.rated", 0, 0.1,        SYSOID ".2.5.1.31.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.C.remain", 0, 0.1,       SYSOID ".2.5.1.32.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.C.apparent", 0, 0.1,     SYSOID ".2.5.1.33.0", NULL, SU_FLAG_OK, NULL },
-	{ "power.C.powerFactor", 0, 0.01, SYSOID ".2.5.1.34.0", NULL, SU_FLAG_OK, NULL },
+	{ "power.energy", 0, 0.1,         SYSOID ".2.5.1.19.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.A.active", 0, 0.1,       SYSOID ".2.5.1.20.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.A.rated", 0, 0.1,        SYSOID ".2.5.1.21.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.A.remain", 0, 0.1,       SYSOID ".2.5.1.22.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.A.apparent", 0, 0.1,     SYSOID ".2.5.1.23.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.A.powerFactor", 0, 0.01, SYSOID ".2.5.1.24.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.B.active", 0, 0.1,       SYSOID ".2.5.1.25.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.B.rated", 0, 0.1,        SYSOID ".2.5.1.26.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.B.remain", 0, 0.1,       SYSOID ".2.5.1.27.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.B.apparent", 0, 0.1,     SYSOID ".2.5.1.28.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.B.powerFactor", 0, 0.01, SYSOID ".2.5.1.29.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.C.active", 0, 0.1,       SYSOID ".2.5.1.30.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.C.rated", 0, 0.1,        SYSOID ".2.5.1.31.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.C.remain", 0, 0.1,       SYSOID ".2.5.1.32.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.C.apparent", 0, 0.1,     SYSOID ".2.5.1.33.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "power.C.powerFactor", 0, 0.01, SYSOID ".2.5.1.34.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+
+	{ "input.realpower.nominal", 0, 0.1, SYSOID ".2.5.1.21.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL }, /// power nominal (ratedPower)
+	{ "input.power.nominal",     0, 0.1, SYSOID ".2.5.1.21.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.power",             0, 0.1, SYSOID ".2.5.1.20.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL }, /// power real (activePower)
+	{ "input.L1.power",          0, 0.1, SYSOID ".2.5.1.20.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L2.power",          0, 0.1, SYSOID ".2.5.1.25.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "input.L3.power",          0, 0.1, SYSOID ".2.5.1.30.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
 
 ///	/* atsInput.0 = STRING: -- */              { "unmapped.atsInput", ST_FLAG_STRING, SU_INFOSIZE,      SYSOID ".2.5.1.35.0", NULL, SU_FLAG_OK, NULL },
 ///	/* atsPriority.0 = STRING: -- */           { "unmapped.atsPriority", ST_FLAG_STRING, SU_INFOSIZE,   SYSOID ".2.5.1.36.0", NULL, SU_FLAG_OK, NULL },
@@ -566,25 +482,24 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 ///	/* atsMonitor.0 = STRING: -- */            { "unmapped.atsMonitor", ST_FLAG_STRING, SU_INFOSIZE,    SYSOID ".2.5.1.45.0", NULL, SU_FLAG_OK, NULL },
 	{ "ats.input", ST_FLAG_STRING, SU_INFOSIZE,       SYSOID ".2.5.1.35.0", NULL, SU_FLAG_OK, NULL },
 	{ "ats.priority", ST_FLAG_STRING, SU_INFOSIZE,    SYSOID ".2.5.1.36.0", NULL, SU_FLAG_OK, NULL },
-	{ "ats.A.voltage", 0, 1,                          SYSOID ".2.5.1.37.0", NULL, SU_FLAG_OK, NULL },
-	{ "ats.B.voltage", 0, 1,                          SYSOID ".2.5.1.38.0", NULL, SU_FLAG_OK, NULL },
-	{ "ats.A.energy", 0, 0.1,                         SYSOID ".2.5.1.39.0", NULL, SU_FLAG_OK, NULL },
-	{ "ats.B.energy", 0, 0.1,                         SYSOID ".2.5.1.40.0", NULL, SU_FLAG_OK, NULL },
-	{ "ats.switch.low", 0, 1,                         SYSOID ".2.5.1.41.0", NULL, SU_FLAG_OK, NULL },
-	{ "ats.switch.high", 0, 1,                        SYSOID ".2.5.1.42.0", NULL, SU_FLAG_OK, NULL },
-	{ "ats.switch.time", 0, 1,                        SYSOID ".2.5.1.43.0", NULL, SU_FLAG_OK, NULL },
+	{ "ats.A.voltage", 0, 1,                          SYSOID ".2.5.1.37.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "ats.B.voltage", 0, 1,                          SYSOID ".2.5.1.38.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "ats.A.energy", 0, 0.1,                         SYSOID ".2.5.1.39.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "ats.B.energy", 0, 0.1,                         SYSOID ".2.5.1.40.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "ats.switch.low", 0, 1,                         SYSOID ".2.5.1.41.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "ats.switch.high", 0, 1,                        SYSOID ".2.5.1.42.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
+	{ "ats.switch.time", 0, 1,                        SYSOID ".2.5.1.43.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
 	{ "ats.switch.lock", ST_FLAG_STRING, SU_INFOSIZE, SYSOID ".2.5.1.44.0", NULL, SU_FLAG_OK, NULL },
 	{ "ats.monitor", ST_FLAG_STRING, SU_INFOSIZE,     SYSOID ".2.5.1.45.0", NULL, SU_FLAG_OK, NULL },
 
-///	/* allOutletsSwitch.0 = INTEGER: none(-1) */ { "unmapped.allOutletsSwitch", 0, 1, SYSOID ".2.5.1.46.0", NULL, SU_FLAG_OK, NULL },
-///	/* frequency.0 = INTEGER: 50 Hz */           { "unmapped.frequency", 0, 1, SYSOID ".2.5.1.47.0", NULL, SU_FLAG_OK, NULL },
-	{ "outlets.switch", 0, 1,  SYSOID ".2.5.1.46.0", NULL, SU_FLAG_OK, NULL },
-	{ "input.frequency", 0, 1, SYSOID ".2.5.1.47.0", NULL, SU_FLAG_OK, NULL },
+///	/* frequency.0 = INTEGER: 50 Hz */ { "unmapped.frequency", 0, 1, SYSOID ".2.5.1.47.0", NULL, SU_FLAG_OK, NULL },
+	{ "input.frequency", 0, 1, SYSOID ".2.5.1.47.0", NULL, SU_FLAG_NEGINVALID | SU_FLAG_OK, NULL },
 
 /* Please revise values discovered by data walk for mappings to
  * docs/nut-names.txt and group the rest under the ifdef below:
  */
 #if WITH_UNMAPPED_DATA_POINTS
+	/* allOutletsSwitch.0 = INTEGER: none(-1) */ { "unmapped.allOutletsSwitch", 0, 1, SYSOID ".2.5.1.46.0", NULL, SU_FLAG_OK, NULL },
 	/* powerSummaryEntry.54.0 = INTEGER: 16 */ { "unmapped.powerSummaryEntry", 0, 1, SYSOID ".2.5.1.54.0", NULL, SU_FLAG_OK, NULL },
 #endif	/* if WITH_UNMAPPED_DATA_POINTS */
 
@@ -592,12 +507,16 @@ static snmp_info_t eaton_pdu_flex_mib[] = {
 	{ NULL, 0, 0, NULL, NULL, 0, NULL }
 };
 
-mib2nut_info_t eaton_pdu_flex = { "eaton_pdu_flex", EATON_PDU_FLEX_MIB_VERSION, NULL, NULL, eaton_pdu_flex_mib, EATON_PDU_FLEX_SYSOID, NULL };
+mib2nut_info_t eaton_pdu_flex_g2 = { "eaton_pdu_flex_g2", EATON_PDU_FLEX_G2_MIB_VERSION, NULL, NULL, eaton_pdu_flex_g2_mib, EATON_PDU_FLEX_G2_SYSOID, NULL };
+
+
+
 
 
 
 
 #if 0
+
 /**
 ///SMART-PDU-MIB.txt
 
