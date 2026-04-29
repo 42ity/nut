@@ -290,7 +290,7 @@ EOF
 	{ NULL, 0, 0, NULL, NULL, 0, NULL }
 };
 
-mib2nut_info_t  ${LDRIVER} = { "${LDRIVER}", ${UDRIVER}_MIB_VERSION, NULL, NULL, ${LDRIVER}_mib, ${UDRIVER}_DEVICE_SYSOID };
+mib2nut_info_t  ${LDRIVER} = { "${LDRIVER}", ${UDRIVER}_MIB_VERSION, NULL, NULL, ${LDRIVER}_mib, ${UDRIVER}_SYSOID };
 EOF
 
 	return
